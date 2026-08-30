@@ -1,0 +1,51 @@
+import { notFound } from "next/navigation";
+import { getSaleById } from "@/server/services/saleService";
+import { ApiError } from "@/lib/api-error";
+import { BillView } from "@/components/sales/BillView";
+
+export default async function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  let sale;
+  try {
+    sale = await getSaleById(id);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound();
+    }
+    throw error;
+  }
+
+  return (
+    <div className="p-6">
+      <BillView
+        sale={{
+          id: sale.id,
+          billNumber: sale.billNumber,
+          type: sale.type,
+          status: sale.status,
+          subtotal: sale.subtotal.toString(),
+          discountTotal: sale.discountTotal.toString(),
+          taxTotal: sale.taxTotal.toString(),
+          grandTotal: sale.grandTotal.toString(),
+          paymentMethod: sale.paymentMethod,
+          amountPaid: sale.amountPaid?.toString() ?? null,
+          completedAt: sale.completedAt?.toISOString() ?? null,
+          createdAt: sale.createdAt.toISOString(),
+          customer: sale.customer ? { name: sale.customer.name, phone: sale.customer.phone } : null,
+          cashier: sale.cashier,
+          items: sale.items.map((item) => ({
+            id: item.id,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice.toString(),
+            lineDiscount: item.lineDiscount.toString(),
+            lineTotal: item.lineTotal.toString(),
+            product: item.product,
+          })),
+          originalSale: sale.originalSale,
+          exchangedInto: sale.exchangedInto,
+        }}
+      />
+    </div>
+  );
+}

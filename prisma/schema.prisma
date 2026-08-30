@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  CASHIER
+}
+
+enum SaleType {
+  SALE
+  EXCHANGE
+}
+
+enum SaleStatus {
+  DRAFT
+  COMPLETED
+  VOIDED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  UPI
+  OTHER
+}
+
+enum StockMovementType {
+  SALE
+  EXCHANGE_RETURN
+  EXCHANGE_OUT
+  IMPORT
+  MANUAL_ADJUSTMENT
+}
+
+// Seeded only — no self-registration. Admin creates cashier accounts directly in DB / via seed.
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  username     String   @unique
+  passwordHash String
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  salesCreated    Sale[]          @relation("SaleCashier")
+  productsUpdated Product[]       @relation("ProductUpdatedByAdmin")
+  stockMovements  StockMovement[] @relation("MovementByAdmin")
+
+  @@map("users")
+}
+
+model Product {
+  id            String  @id @default(uuid())
+  name          String
+  barcode       String  @unique
+  category      String
+  costPrice     Decimal @db.Decimal(10, 2)
+  sellingPrice  Decimal @db.Decimal(10, 2)
+  stockQty      Int     @default(0)
+  lowStockAlert Int     @default(5)
+  attributes    Json? // brand, size, color, unit, custom fields — varies per product, not filtered/sorted on
+  isActive      Boolean @default(true)
+
+  updatedByAdminId String?
+  updatedByAdmin    User?   @relation("ProductUpdatedByAdmin", fields: [updatedByAdminId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  saleItems      SaleItem[]
+  stockMovements StockMovement[]
+
+  @@index([category])
+  @@map("products")
+}
+
+// Immutable ledger of every stock change. product.stockQty is a cached current value;
+// this table is the audit trail reconciling why stock is what it is.
+model StockMovement {
+  id        String            @id @default(uuid())
+  productId String
+  product   Product           @relation(fields: [productId], references: [id])
+  type      StockMovementType
+  quantity  Int // positive = stock in, negative = stock out
+  note      String?
+
+  saleId String?
+  sale   Sale?   @relation(fields: [saleId], references: [id])
+
+  // Only present for IMPORT / MANUAL_ADJUSTMENT — SALE/EXCHANGE movements are
+  // triggered by a cashier's sale (see sale.cashierId), not an admin action.
+  performedByAdminId String?
+  performedByAdmin   User?   @relation("MovementByAdmin", fields: [performedByAdminId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@map("stock_movements")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  createdAt DateTime @default(now())
+
+  sales Sale[]
+
+  @@map("customers")
+}
+
+model Sale {
+  id         String     @id @default(uuid())
+  billNumber String     @unique @default(cuid())
+  status     SaleStatus @default(DRAFT)
+  type       SaleType   @default(SALE)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  cashierId String
+  cashier   User   @relation("SaleCashier", fields: [cashierId], references: [id])
+
+  subtotal      Decimal @db.Decimal(10, 2)
+  discountTotal Decimal @default(0) @db.Decimal(10, 2)
+  taxTotal      Decimal @default(0) @db.Decimal(10, 2)
+  grandTotal    Decimal @db.Decimal(10, 2)
+
+  paymentMethod PaymentMethod?
+  amountPaid    Decimal?       @db.Decimal(10, 2)
+
+  // Exchange = a new Sale row referencing the original sale it replaces.
+  originalSaleId String? @unique
+  originalSale   Sale?   @relation("SaleExchange", fields: [originalSaleId], references: [id])
+  exchangedInto  Sale?   @relation("SaleExchange")
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  items          SaleItem[]
+  stockMovements StockMovement[]
+
+  @@index([status])
+  @@index([cashierId])
+  @@map("sales")
+}
+
+// Line items snapshot pricing at time of sale so historical bills stay accurate
+// even after product.sellingPrice changes later.
+model SaleItem {
+  id        String  @id @default(uuid())
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  quantity     Int
+  unitPrice    Decimal @db.Decimal(10, 2)
+  lineDiscount Decimal @default(0) @db.Decimal(10, 2)
+  lineTotal    Decimal @db.Decimal(10, 2)
+
+  @@map("sale_items")
+}
