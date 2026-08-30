@@ -39,6 +39,9 @@ interface Metrics {
   totalAmount: number;
   totalDiscounts: number;
   totalBills: number;
+  regularSalesCount?: number;
+  pureReturnsCount?: number;
+  exchangeWithNewItemsCount?: number;
   totalExchanges: number;
 }
 
@@ -60,6 +63,22 @@ export default function TransactionsPage() {
   // Pagination
   const PAGE_SIZE = 10;
   const [currentPage, setCurrentPage] = useState(1);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setUserRole(data.user?.role ?? null);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    fetchUser();
+  }, []);
 
   const fetchSales = useCallback(async () => {
     setIsLoading(true);
@@ -139,43 +158,79 @@ export default function TransactionsPage() {
             Search, filter, and audit every customer invoice, exchange record, and payment across your store.
           </p>
         </div>
-        <Button onClick={downloadCsv} variant="secondary" size="md" className="font-semibold self-start sm:self-auto gap-2">
-          <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          Export CSV
-        </Button>
+        {userRole === "ADMIN" && (
+          <Button onClick={downloadCsv} variant="secondary" size="md" className="font-semibold self-start sm:self-auto gap-2">
+            <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export CSV
+          </Button>
+        )}
       </div>
 
       {/* KPI Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
-          <span className="text-xs font-semibold text-muted uppercase tracking-wider block">Total Sales</span>
-          <p className="text-xl sm:text-2xl font-extrabold text-foreground mt-1">
-            {formatCurrency(metrics.totalAmount)}
-          </p>
-        </div>
+        {userRole === "ADMIN" ? (
+          <>
+            <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
+              <span className="text-xs font-semibold text-muted uppercase tracking-wider block">Total Sales</span>
+              <p className="text-xl sm:text-2xl font-extrabold text-foreground mt-1">
+                {formatCurrency(metrics.totalAmount)}
+              </p>
+            </div>
 
-        <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
-          <span className="text-xs font-semibold text-muted uppercase tracking-wider block">Invoices Count</span>
-          <p className="text-xl sm:text-2xl font-extrabold text-foreground mt-1">
-            {metrics.totalBills}
-          </p>
-        </div>
+            <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
+              <span className="text-xs font-semibold text-muted uppercase tracking-wider block">Invoices Count</span>
+              <p className="text-xl sm:text-2xl font-extrabold text-foreground mt-1">
+                {metrics.totalBills}
+              </p>
+            </div>
 
-        <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
-          <span className="text-xs font-semibold text-muted uppercase tracking-wider block">Exchanges Done</span>
-          <p className="text-xl sm:text-2xl font-extrabold text-blue-600 mt-1">
-            {metrics.totalExchanges}
-          </p>
-        </div>
+            <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
+              <span className="text-xs font-semibold text-muted uppercase tracking-wider block">Exchanges Done</span>
+              <p className="text-xl sm:text-2xl font-extrabold text-blue-600 mt-1">
+                {metrics.totalExchanges}
+              </p>
+            </div>
 
-        <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
-          <span className="text-xs font-semibold text-muted uppercase tracking-wider block">Discounts & Credits</span>
-          <p className="text-xl sm:text-2xl font-extrabold text-emerald-600 mt-1">
-            {formatCurrency(metrics.totalDiscounts)}
-          </p>
-        </div>
+            <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
+              <span className="text-xs font-semibold text-muted uppercase tracking-wider block">Discounts & Credits</span>
+              <p className="text-xl sm:text-2xl font-extrabold text-emerald-600 mt-1">
+                {formatCurrency(metrics.totalDiscounts)}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
+              <span className="text-xs font-semibold text-muted uppercase tracking-wider block">Total Invoices</span>
+              <p className="text-xl sm:text-2xl font-extrabold text-foreground mt-1">
+                {metrics.totalBills}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
+              <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider block">Regular Sales</span>
+              <p className="text-xl sm:text-2xl font-extrabold text-emerald-600 mt-1">
+                {metrics.regularSalesCount ?? Math.max(0, metrics.totalBills - metrics.totalExchanges)}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider block">Exchanges Done</span>
+              <p className="text-xl sm:text-2xl font-extrabold text-blue-600 mt-1">
+                {metrics.exchangeWithNewItemsCount ?? metrics.totalExchanges}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-white p-4 shadow-xs">
+              <span className="text-xs font-semibold text-red-700 uppercase tracking-wider block">Returns Done</span>
+              <p className="text-xl sm:text-2xl font-extrabold text-red-600 mt-1">
+                {metrics.pureReturnsCount ?? 0}
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Filter Toolbar */}

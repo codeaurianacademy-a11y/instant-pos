@@ -182,6 +182,7 @@ export async function completeSale(input: CompleteSaleInput) {
         data: {
           status: "COMPLETED",
           customerId,
+          cashierId: input.cashierId,
           subtotal,
           discountTotal,
           taxTotal,

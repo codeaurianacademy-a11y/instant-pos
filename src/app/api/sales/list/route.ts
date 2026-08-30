@@ -85,6 +85,9 @@ export async function GET(request: Request) {
       .filter((s) => s.status === "COMPLETED" && s.type === "SALE")
       .reduce((sum, s) => sum + Number(s.discountTotal), 0);
 
+    const regularSalesCount = sales.filter((s) => s.type === "SALE").length;
+    const pureReturnsCount = sales.filter((s) => s.type === "EXCHANGE" && s.items.length === 0).length;
+    const exchangeWithNewItemsCount = sales.filter((s) => s.type === "EXCHANGE" && s.items.length > 0).length;
     const totalExchanges = sales.filter((s) => s.type === "EXCHANGE").length;
 
     const formattedSales = sales.map((sale) => ({
@@ -123,6 +126,9 @@ export async function GET(request: Request) {
         totalAmount,
         totalDiscounts,
         totalBills: sales.length,
+        regularSalesCount,
+        pureReturnsCount,
+        exchangeWithNewItemsCount,
         totalExchanges,
       },
     });

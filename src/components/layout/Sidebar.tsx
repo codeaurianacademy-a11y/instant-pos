@@ -77,7 +77,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/sales/drafts", label: "Draft Orders", shortLabel: "Drafts", icon: DraftsIcon },
   { href: "/inventory", label: "Inventory", shortLabel: "Stock", adminOnly: true, icon: InventoryIcon },
   { href: "/barcodes", label: "Barcode Labels", shortLabel: "Barcodes", adminOnly: true, icon: BarcodeIcon },
-  { href: "/reports", label: "Reports & Export", shortLabel: "Reports", adminOnly: true, icon: ReportsIcon },
+  { href: "/reports", label: "Reports & Analytics", shortLabel: "Reports", adminOnly: true, icon: ReportsIcon },
 ];
 
 function isNavActive(pathname: string, href: string): boolean {

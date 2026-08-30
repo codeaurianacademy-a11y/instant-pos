@@ -13,19 +13,55 @@ export async function getTodaysSalesSummary() {
       status: "COMPLETED",
       completedAt: { gte: todayStart },
     },
-    select: {
-      grandTotal: true,
-      discountTotal: true,
-      type: true,
-      cashierId: true,
+    include: {
       cashier: { select: { name: true } },
+      items: {
+        include: {
+          product: {
+            select: {
+              costPrice: true,
+              sellingPrice: true,
+            },
+          },
+        },
+      },
+      stockMovements: {
+        include: {
+          product: {
+            select: {
+              costPrice: true,
+              sellingPrice: true,
+            },
+          },
+        },
+      },
     },
   });
 
-  // Revenue = sum of regular sales grandTotal
-  //           + exchange bills grandTotal (positive = extra collected, negative = refund given)
-  // This correctly nets out returns: e.g. Sale +430, Exchange -430 = net 0
+  // Net Revenue (Realized cash/card collected after discounts and returns)
   const totalAmount = sales.reduce((sum, sale) => sum + Number(sale.grandTotal), 0);
+
+  // Net Cost of Goods Sold:
+  // - Negative stock movement = item left the store (Sale or Exchange Out) -> Cost added
+  // - Positive stock movement = item returned to store (Exchange Return) -> Cost subtracted (recovered)
+  let totalCost = 0;
+  for (const sale of sales) {
+    if (sale.stockMovements && sale.stockMovements.length > 0) {
+      for (const mov of sale.stockMovements) {
+        const unitCost = Number(mov.product?.costPrice ?? 0);
+        totalCost += -mov.quantity * unitCost;
+      }
+    } else if (sale.items && sale.items.length > 0) {
+      for (const item of sale.items) {
+        const unitCost = Number(item.product?.costPrice ?? 0);
+        totalCost += item.quantity * unitCost;
+      }
+    }
+  }
+
+  // Net Profit & Profit Margin
+  const netProfit = totalAmount - totalCost;
+  const profitMargin = totalAmount > 0 ? (netProfit / totalAmount) * 100 : 0;
 
   const billCount = sales.filter((s) => s.type === "SALE").length;
   const exchangeCount = sales.filter((s) => s.type === "EXCHANGE").length;
@@ -47,7 +83,10 @@ export async function getTodaysSalesSummary() {
   }
 
   return {
-    totalAmount: Math.max(0, totalAmount), // floor at 0 if all returns
+    totalAmount: Math.max(0, totalAmount),
+    totalCost: Math.max(0, totalCost),
+    netProfit,
+    profitMargin,
     billCount,
     exchangeCount,
     totalDiscounts,

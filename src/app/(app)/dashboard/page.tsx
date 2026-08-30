@@ -54,13 +54,31 @@ export default async function DashboardPage() {
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         <StatCard
-          label="Today's Revenue"
-          value={formatCurrency(salesSummary.totalAmount)}
-          tone="success"
+          label="Today's Net Profit"
+          value={formatCurrency(salesSummary.netProfit)}
+          hint={
+            salesSummary.totalAmount > 0
+              ? `Margin: ${salesSummary.profitMargin.toFixed(1)}% • Cost: ${formatCurrency(salesSummary.totalCost)}`
+              : "No sales yet today"
+          }
+          tone={salesSummary.netProfit >= 0 ? "success" : "danger"}
           icon={
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+          }
+        />
+        <StatCard
+          label="Today's Sale"
+          value={formatCurrency(salesSummary.totalAmount)}
+          hint="Net sales after discounts"
+          tone="default"
+          icon={
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
               <span className="font-bold text-sm">₹</span>
             </div>
           }
@@ -68,7 +86,11 @@ export default async function DashboardPage() {
         <StatCard
           label="Bills Completed"
           value={String(salesSummary.billCount)}
-          hint={salesSummary.billCount > 0 ? "Active shift" : "No sales yet today"}
+          hint={
+            salesSummary.billCount > 0
+              ? `${salesSummary.billCount} sales${salesSummary.exchangeCount > 0 ? ` • ${salesSummary.exchangeCount} returns` : ""}`
+              : "No sales yet today"
+          }
           icon={
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

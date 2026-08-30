@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 import { z } from "zod";
-import { requireSession } from "@/lib/session";
+import { requireAdmin } from "@/lib/session";
 import { handleApiError, ApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -12,7 +12,7 @@ const querySchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    await requireSession();
+    await requireAdmin();
 
     const { searchParams } = new URL(request.url);
     const { from, to } = querySchema.parse({
