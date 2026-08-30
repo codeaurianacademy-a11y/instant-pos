@@ -10,9 +10,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex h-dvh w-full">
+    <div className="flex flex-col lg:flex-row h-dvh w-full overflow-hidden bg-background">
       <Sidebar user={{ name: session.name, username: session.username, role: session.role }} />
-      <main className="flex-1 overflow-y-auto bg-background">{children}</main>
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-background pb-20 lg:pb-0">
+        {children}
+      </main>
     </div>
   );
 }

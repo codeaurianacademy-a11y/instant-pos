@@ -95,22 +95,22 @@ export default function BarcodesPage() {
   }));
 
   return (
-    <div className="flex flex-col gap-6 p-6 lg:p-8 max-w-7xl mx-auto w-full pb-36">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-48 sm:pb-36">
       {/* Header */}
-      <div className="border-b border-border/80 pb-5">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Barcode Labels & Sticker Printing</h1>
-        <p className="text-sm text-muted mt-0.5">
+      <div className="border-b border-border/80 pb-4">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Barcode Labels & Sticker Printing</h1>
+        <p className="text-xs sm:text-sm text-muted mt-0.5">
           Select products, set print quantities, choose sticker dimensions, and batch print onto standard A4 sticker sheets.
         </p>
       </div>
 
       {/* Label Size Selector */}
-      <div className="rounded-xl border border-border bg-white p-5 shadow-xs">
+      <div className="rounded-xl border border-border bg-white p-4 sm:p-5 shadow-xs">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Sticker Dimensions & Layout</span>
-          <span className="text-xs text-muted">A4 Paper Compatible</span>
+          <span className="text-[11px] text-muted">A4 Paper Compatible</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
           {LABEL_SIZES.map((s) => {
             const isSelected = labelSize === s.key;
             return (
@@ -118,17 +118,17 @@ export default function BarcodesPage() {
                 key={s.key}
                 type="button"
                 onClick={() => setLabelSize(s.key)}
-                className={`flex flex-col items-start p-3.5 rounded-xl border text-left transition-all duration-150 cursor-pointer ${
+                className={`flex flex-col items-start p-3 sm:p-3.5 rounded-xl border text-left transition-all duration-150 cursor-pointer ${
                   isSelected
                     ? "border-accent bg-accent/5 ring-2 ring-accent shadow-xs"
                     : "border-border bg-slate-50/50 hover:bg-slate-100 hover:border-slate-300"
                 }`}
               >
-                <span className={`text-sm font-bold ${isSelected ? "text-accent" : "text-foreground"}`}>
+                <span className={`text-xs sm:text-sm font-bold ${isSelected ? "text-accent" : "text-foreground"}`}>
                   {s.label}
                 </span>
-                <span className="text-xs text-slate-600 font-medium mt-0.5">{s.desc}</span>
-                <span className="text-[11px] text-muted mt-1">{s.sheetCount}</span>
+                <span className="text-[11px] sm:text-xs text-slate-600 font-medium mt-0.5 leading-tight">{s.desc}</span>
+                <span className="text-[10px] text-muted mt-1">{s.sheetCount}</span>
               </button>
             );
           })}
@@ -167,7 +167,7 @@ export default function BarcodesPage() {
           <p className="text-xs text-muted mt-1">Try adjusting your search query or add new inventory.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
           {filteredProducts.map((product) => {
             const inQueue = !!queue[product.id];
             const currentQty = queue[product.id]?.qty ?? 0;
@@ -175,7 +175,7 @@ export default function BarcodesPage() {
               <div
                 key={product.id}
                 onClick={() => addToQueue(product)}
-                className={`group flex flex-col justify-between rounded-xl border p-4 transition-all duration-150 cursor-pointer ${
+                className={`group flex flex-col justify-between rounded-xl border p-3.5 sm:p-4 transition-all duration-150 cursor-pointer ${
                   inQueue
                     ? "border-accent bg-blue-50/30 shadow-xs ring-1 ring-accent"
                     : "border-border bg-white hover:border-slate-300 hover:shadow-xs"
@@ -183,10 +183,10 @@ export default function BarcodesPage() {
               >
                 <div>
                   {/* Card Header */}
-                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-[11px] font-mono text-muted truncate">{product.barcode}</span>
                     <span
-                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                      className={`text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                         inQueue ? "bg-accent text-white" : "bg-slate-100 text-slate-600 group-hover:bg-slate-200"
                       }`}
                     >
@@ -202,7 +202,7 @@ export default function BarcodesPage() {
                 </div>
 
                 {/* Live Sticker Preview */}
-                <div className="mt-3.5 pt-3 border-t border-border/70 flex items-center justify-center bg-slate-50/70 p-2.5 rounded-lg overflow-hidden">
+                <div className="mt-3 pt-2.5 border-t border-border/70 flex items-center justify-center bg-slate-50/70 p-2 rounded-lg overflow-hidden">
                   <div className="transform scale-90 origin-center">
                     <ProductLabel product={product} size={labelSize} />
                   </div>
@@ -213,34 +213,33 @@ export default function BarcodesPage() {
         </div>
       )}
 
-      {/* Floating / Sticky Print Queue Bar */}
+      {/* Floating / Sticky Print Queue Bar (Mobile optimized position) */}
       {queueList.length > 0 && (
-        <div className="fixed bottom-6 left-6 right-6 lg:left-72 max-w-5xl mx-auto z-40 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-4 shadow-2xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3 mb-3">
+        <div className="fixed bottom-16 sm:bottom-6 left-2 right-2 sm:left-6 sm:right-6 lg:left-72 max-w-5xl mx-auto z-40 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-3.5 sm:p-4 shadow-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border pb-2.5 mb-2.5">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white">
+              <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-accent text-white shrink-0">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
               </div>
               <div>
-                <span className="text-sm font-bold text-foreground block">Print Queue</span>
-                <span className="text-xs text-muted">
-                  {queueList.length} product{queueList.length > 1 ? "s" : ""} •{" "}
-                  <strong className="text-accent">{totalLabels} total sticker{totalLabels > 1 ? "s" : ""}</strong>
+                <span className="text-xs sm:text-sm font-bold text-foreground block leading-tight">Print Queue</span>
+                <span className="text-[11px] text-muted">
+                  {queueList.length} items • <strong className="text-accent">{totalLabels} stickers</strong>
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between sm:justify-end gap-2">
               <button
                 type="button"
                 onClick={clearQueue}
-                className="text-xs text-slate-500 hover:text-red-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                className="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors"
               >
-                Clear Queue
+                Clear
               </button>
-              <Button size="md" onClick={printLabels} className="font-semibold shadow-xs">
+              <Button size="md" onClick={printLabels} className="font-semibold shadow-xs text-xs sm:text-sm">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
@@ -250,19 +249,19 @@ export default function BarcodesPage() {
           </div>
 
           {/* Queue Item List */}
-          <div className="max-h-40 overflow-y-auto divide-y divide-border pr-1 flex flex-col gap-1">
+          <div className="max-h-32 sm:max-h-40 overflow-y-auto divide-y divide-border pr-1 flex flex-col gap-1">
             {queueList.map((item) => (
-              <div key={item.product.id} className="flex items-center justify-between py-1.5 gap-3">
+              <div key={item.product.id} className="flex items-center justify-between py-1 gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-foreground truncate">{item.product.name}</p>
-                  <p className="text-[11px] font-mono text-muted">{item.product.barcode}</p>
+                  <p className="text-[10px] font-mono text-muted">{item.product.barcode}</p>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setQty(item.product.id, item.qty - 1)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-slate-50 text-slate-700 hover:bg-slate-200 transition-colors font-bold text-xs"
+                    className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-slate-50 text-slate-700 hover:bg-slate-200 font-bold text-xs"
                   >
                     -
                   </button>
@@ -274,12 +273,12 @@ export default function BarcodesPage() {
                       const val = parseInt(e.target.value, 10);
                       if (!isNaN(val) && val > 0) setQty(item.product.id, val);
                     }}
-                    className="h-7 w-12 rounded-lg border border-border text-center text-xs font-bold focus:ring-1 focus:ring-accent outline-none"
+                    className="h-6 w-10 sm:h-7 sm:w-12 rounded-lg border border-border text-center text-xs font-bold focus:ring-1 focus:ring-accent outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setQty(item.product.id, item.qty + 1)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-slate-50 text-slate-700 hover:bg-slate-200 transition-colors font-bold text-xs"
+                    className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-slate-50 text-slate-700 hover:bg-slate-200 font-bold text-xs"
                   >
                     +
                   </button>
@@ -287,9 +286,9 @@ export default function BarcodesPage() {
                     type="button"
                     onClick={() => removeFromQueue(item.product.id)}
                     title="Remove"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors ml-1"
+                    className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 ml-1"
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>

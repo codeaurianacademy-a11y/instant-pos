@@ -10,10 +10,6 @@ interface ScannerInputProps {
   disabled?: boolean;
 }
 
-// Global keyboard-wedge listener: a USB/Bluetooth barcode scanner types
-// characters far faster than a human and ends with Enter. If characters
-// arrive under 100ms apart and the buffer ends in Enter with length >= 3,
-// treat it as a scanner burst rather than someone typing in another field.
 export function ScannerInput({ onScan, disabled }: ScannerInputProps) {
   const [manualValue, setManualValue] = useState("");
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -31,7 +27,7 @@ export function ScannerInput({ onScan, disabled }: ScannerInputProps) {
       const currentTime = Date.now();
 
       if (e.key === "Enter") {
-        if (buffer.length >= 3 && currentTime - lastTime < 100) {
+        if (buffer.length >= 2 && currentTime - lastTime < 100) {
           e.preventDefault();
           e.stopPropagation();
           const code = buffer;
@@ -61,19 +57,31 @@ export function ScannerInput({ onScan, disabled }: ScannerInputProps) {
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex items-center gap-2 w-full">
       <form onSubmit={handleManualSubmit} className="flex-1">
         <Input
           ref={inputRef}
-          placeholder="Scan or type a barcode…"
+          placeholder="Scan barcode or type SKU…"
           value={manualValue}
           onChange={(e) => setManualValue(e.target.value)}
           disabled={disabled}
           autoFocus
+          className="h-10 text-sm shadow-2xs"
         />
       </form>
-      <Button type="button" variant="secondary" onClick={() => setIsCameraOpen(true)} disabled={disabled}>
-        Camera scan
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => setIsCameraOpen(true)}
+        disabled={disabled}
+        className="shrink-0 h-10 px-3 sm:px-4 font-semibold"
+      >
+        <svg className="h-4 w-4 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span className="hidden sm:inline">Camera Scan</span>
+        <span className="sm:hidden text-xs">Scan</span>
       </Button>
 
       <CameraScannerModal
