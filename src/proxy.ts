@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { JWT_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
-const ADMIN_ONLY_PREFIXES = ["/inventory", "/reports"];
+const ADMIN_ONLY_PREFIXES = ["/dashboard", "/inventory", "/reports", "/barcodes"];
 const PUBLIC_PATHS = ["/login"];
 
 export async function proxy(request: NextRequest) {
@@ -20,10 +20,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (pathname === "/") {
+    const target = session.role === "ADMIN" ? "/dashboard" : "/sales";
+    return NextResponse.redirect(new URL(target, request.url));
+  }
+
   const isAdminOnlyRoute = ADMIN_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (isAdminOnlyRoute && session.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/sales", request.url));
   }
 
   return NextResponse.next();

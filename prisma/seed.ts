@@ -7,35 +7,51 @@ const adapter = new PrismaPg({ connectionString: process.env.DIRECT_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const username = process.env.SEED_ADMIN_USERNAME;
-  const password = process.env.SEED_ADMIN_PASSWORD;
-  const name = process.env.SEED_ADMIN_NAME;
+  const adminUsername = process.env.SEED_ADMIN_USERNAME || "admin";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || "AdminPassword@123";
+  const adminName = process.env.SEED_ADMIN_NAME || "Admin";
 
-  if (!username || !password || !name) {
-    throw new Error(
-      "SEED_ADMIN_USERNAME, SEED_ADMIN_PASSWORD and SEED_ADMIN_NAME must be set in .env before seeding"
-    );
+  // 1. Seed Admin
+  const existingAdmin = await prisma.user.findUnique({ where: { username: adminUsername } });
+  if (!existingAdmin) {
+    const passwordHash = await hashPassword(adminPassword);
+    const admin = await prisma.user.create({
+      data: {
+        name: adminName,
+        username: adminUsername,
+        passwordHash,
+        role: "ADMIN",
+      },
+    });
+    console.log(`Created admin user "${admin.username}" (id: ${admin.id})`);
+  } else {
+    console.log(`Admin user "${adminUsername}" already exists.`);
   }
 
-  const existing = await prisma.user.findUnique({ where: { username } });
+  // 2. Seed 3 Salesman / Cashier accounts
+  const salesmans = [
+    { name: "Sales Counter 1", username: "sales1", password: "Sales1Password@123" },
+    { name: "Sales Counter 2", username: "sales2", password: "Sales2Password@123" },
+    { name: "Sales Counter 3", username: "sales3", password: "Sales3Password@123" },
+  ];
 
-  if (existing) {
-    console.log(`Admin user "${username}" already exists — skipping.`);
-    return;
+  for (const s of salesmans) {
+    const existing = await prisma.user.findUnique({ where: { username: s.username } });
+    if (!existing) {
+      const passwordHash = await hashPassword(s.password);
+      const cashier = await prisma.user.create({
+        data: {
+          name: s.name,
+          username: s.username,
+          passwordHash,
+          role: "CASHIER",
+        },
+      });
+      console.log(`Created cashier user "${cashier.username}" (id: ${cashier.id})`);
+    } else {
+      console.log(`Cashier user "${s.username}" already exists.`);
+    }
   }
-
-  const passwordHash = await hashPassword(password);
-
-  const admin = await prisma.user.create({
-    data: {
-      name,
-      username,
-      passwordHash,
-      role: "ADMIN",
-    },
-  });
-
-  console.log(`Created admin user "${admin.username}" (id: ${admin.id})`);
 }
 
 main()

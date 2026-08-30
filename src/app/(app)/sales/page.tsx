@@ -152,7 +152,7 @@ function SalesPageContent() {
         return;
       }
 
-      showToast("Sale completed", "success");
+      showToast("Sale completed successfully", "success");
       router.push(`/sales/${data.sale.id}`);
     } catch {
       showToast("Something went wrong. Please try again.", "danger");
@@ -199,40 +199,45 @@ function SalesPageContent() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-6xl">
-      <div className="lg:col-span-2 flex flex-col gap-4">
+    <div className="flex flex-col gap-6 p-6 lg:p-8 max-w-7xl mx-auto w-full">
+      <div className="flex items-center justify-between border-b border-border/80 pb-4">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Sell</h1>
-          <p className="text-sm text-muted">
-            {isLoadingDraft ? "Loading draft…" : "Scan a barcode to add items to the cart."}
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">POS Checkout Terminal</h1>
+          <p className="text-sm text-muted mt-0.5">
+            {isLoadingDraft ? "Loading draft sale…" : "Scan barcode or search products to build cart."}
           </p>
         </div>
-
-        <ScannerInput onScan={handleScan} disabled={isScanning || isLoadingDraft} />
-
-        <CartPanel cart={cart} onQuantityChange={handleQuantityChange} onRemove={handleRemove} />
       </div>
 
-      <div>
-        <BillSummary
-          subtotal={subtotal}
-          discountTotal={discountTotal}
-          onDiscountChange={setDiscountTotal}
-          taxTotal={taxTotal}
-          onTaxChange={setTaxTotal}
-          customerName={customerName}
-          onCustomerNameChange={setCustomerName}
-          customerPhone={customerPhone}
-          onCustomerPhoneChange={setCustomerPhone}
-          paymentMethod={paymentMethod}
-          onPaymentMethodChange={setPaymentMethod}
-          amountPaid={amountPaid}
-          onAmountPaidChange={setAmountPaid}
-          onCheckout={handleCheckout}
-          onSaveDraft={handleSaveDraft}
-          isSubmitting={isSubmitting}
-          disabled={cart.length === 0 || isLoadingDraft}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left / Main: Scanner & Cart (7 cols on lg, 8 on xl) */}
+        <div className="lg:col-span-7 xl:col-span-7 flex flex-col gap-4">
+          <ScannerInput onScan={handleScan} disabled={isScanning || isLoadingDraft} />
+          <CartPanel cart={cart} onQuantityChange={handleQuantityChange} onRemove={handleRemove} />
+        </div>
+
+        {/* Right: Bill Summary (5 cols on lg) */}
+        <div className="lg:col-span-5 xl:col-span-5 sticky top-6">
+          <BillSummary
+            subtotal={subtotal}
+            discountTotal={discountTotal}
+            onDiscountChange={setDiscountTotal}
+            taxTotal={taxTotal}
+            onTaxChange={setTaxTotal}
+            customerName={customerName}
+            onCustomerNameChange={setCustomerName}
+            customerPhone={customerPhone}
+            onCustomerPhoneChange={setCustomerPhone}
+            paymentMethod={paymentMethod}
+            onPaymentMethodChange={setPaymentMethod}
+            amountPaid={amountPaid}
+            onAmountPaidChange={setAmountPaid}
+            onCheckout={handleCheckout}
+            onSaveDraft={handleSaveDraft}
+            isSubmitting={isSubmitting}
+            disabled={cart.length === 0 || isLoadingDraft}
+          />
+        </div>
       </div>
     </div>
   );

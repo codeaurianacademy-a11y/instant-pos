@@ -17,7 +17,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto w-full flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
       <BillView
         sale={{
           id: sale.id,
