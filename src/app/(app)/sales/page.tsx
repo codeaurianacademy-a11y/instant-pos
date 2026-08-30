@@ -87,8 +87,48 @@ function SalesPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftId]);
 
+  const [productCache, setProductCache] = useState<Map<string, ProductDTO>>(new Map());
+
+  // ⚡ Pre-fetch active inventory in background on load for instant (0ms) barcode scanning
+  useEffect(() => {
+    let isMounted = true;
+    async function preloadProducts() {
+      try {
+        const res = await fetch("/api/products");
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          const map = new Map<string, ProductDTO>();
+          if (Array.isArray(data.products)) {
+            data.products.forEach((p: ProductDTO) => {
+              if (p.barcode) map.set(p.barcode.trim().toUpperCase(), p);
+            });
+          }
+          setProductCache(map);
+        }
+      } catch {
+        // silent fallback to network scan
+      }
+    }
+    preloadProducts();
+    return () => { isMounted = false; };
+  }, []);
+
   async function handleScan(code: string) {
     if (isScanning) return;
+    const cleanCode = code.trim().toUpperCase();
+
+    // ⚡ 1. Instant Cache Hit (0ms latency, zero server round-trip)
+    const cached = productCache.get(cleanCode);
+    if (cached) {
+      if (cached.stockQty <= 0) {
+        showToast(`${cached.name} is out of stock`, "danger");
+        return;
+      }
+      setCart((prev) => addProductToCart(prev, cached));
+      return;
+    }
+
+    // 🌐 2. Network Fallback (for newly created or uncached items)
     setIsScanning(true);
     try {
       const res = await fetch(`/api/products/barcode/${encodeURIComponent(code)}`);
@@ -105,6 +145,7 @@ function SalesPageContent() {
         return;
       }
 
+      setProductCache((prev) => new Map(prev).set(cleanCode, product));
       setCart((prev) => addProductToCart(prev, product));
     } finally {
       setIsScanning(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
@@ -50,8 +50,48 @@ export function ExchangeForm({ originalSaleId, originalBillNumber, returnableIte
     setReturnQuantities((prev) => ({ ...prev, [productId]: quantity }));
   }
 
+  const [productCache, setProductCache] = useState<Map<string, ProductDTO>>(new Map());
+
+  // ⚡ Pre-fetch active inventory in background on load for instant (0ms) scanning
+  useEffect(() => {
+    let isMounted = true;
+    async function preloadProducts() {
+      try {
+        const res = await fetch("/api/products");
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          const map = new Map<string, ProductDTO>();
+          if (Array.isArray(data.products)) {
+            data.products.forEach((p: ProductDTO) => {
+              if (p.barcode) map.set(p.barcode.trim().toUpperCase(), p);
+            });
+          }
+          setProductCache(map);
+        }
+      } catch {
+        // silent fallback
+      }
+    }
+    preloadProducts();
+    return () => { isMounted = false; };
+  }, []);
+
   async function handleScan(code: string) {
     if (isScanning) return;
+    const cleanCode = code.trim().toUpperCase();
+
+    // ⚡ 1. Check client-side instant cache
+    const cached = productCache.get(cleanCode);
+    if (cached) {
+      if (cached.stockQty <= 0) {
+        showToast(`${cached.name} is out of stock`, "danger");
+        return;
+      }
+      setNewItemsCart((prev) => addProductToCart(prev, cached));
+      return;
+    }
+
+    // 🌐 2. Network Fallback
     setIsScanning(true);
     try {
       const res = await fetch(`/api/products/barcode/${encodeURIComponent(code)}`);
@@ -68,6 +108,7 @@ export function ExchangeForm({ originalSaleId, originalBillNumber, returnableIte
         return;
       }
 
+      setProductCache((prev) => new Map(prev).set(cleanCode, product));
       setNewItemsCart((prev) => addProductToCart(prev, product));
     } finally {
       setIsScanning(false);
