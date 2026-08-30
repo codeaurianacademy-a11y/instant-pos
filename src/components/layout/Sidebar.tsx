@@ -69,6 +69,20 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/reports", label: "Reports & Export", adminOnly: true, icon: ReportsIcon },
 ];
 
+function isNavActive(pathname: string, href: string): boolean {
+  if (href === "/sales") {
+    // Active only on /sales or /sales/[id] but NOT on /sales/drafts
+    return pathname === "/sales" || (pathname.startsWith("/sales/") && !pathname.startsWith("/sales/drafts"));
+  }
+  if (href === "/sales/drafts") {
+    return pathname === "/sales/drafts" || pathname.startsWith("/sales/drafts/");
+  }
+  if (href === "/dashboard") {
+    return pathname === "/dashboard";
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 interface SidebarProps {
   user: { name: string; username: string; role: Role };
 }
@@ -112,7 +126,7 @@ export function Sidebar({ user }: SidebarProps) {
             {user.role === "ADMIN" ? "Admin Navigation" : "Cashier Terminal"}
           </p>
           {visibleItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}`));
+            const isActive = isNavActive(pathname, item.href);
             const Icon = item.icon;
             return (
               <Link
