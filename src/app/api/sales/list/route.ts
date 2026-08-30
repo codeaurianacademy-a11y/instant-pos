@@ -116,6 +116,8 @@ export async function GET(request: Request) {
         lineTotal: Number(item.lineTotal),
         product: item.product,
       })),
+      isEdited: sale.isEdited,
+      editHistory: sale.editHistory,
       originalSale: sale.originalSale,
       exchangedInto: sale.exchangedInto,
     }));

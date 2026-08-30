@@ -7,9 +7,11 @@ import { ProductTable } from "@/components/inventory/ProductTable";
 import { ProductFormModal } from "@/components/inventory/ProductFormModal";
 import { ImportCsvModal } from "@/components/inventory/ImportCsvModal";
 import { BarcodeLabelModal } from "@/components/inventory/BarcodeLabelModal";
+import { useToast } from "@/components/ui/Toast";
 import type { ProductDTO } from "@/lib/types";
 
 export default function InventoryPage() {
+  const { showToast } = useToast();
   const [products, setProducts] = useState<ProductDTO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -46,6 +48,24 @@ export default function InventoryPage() {
   function handleCloseForm() {
     setIsFormOpen(false);
     setEditingProduct(null);
+  }
+
+  async function handleDelete(product: ProductDTO) {
+    if (!window.confirm(`Are you sure you want to delete "${product.name}" (${product.barcode})?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/products/${product.id}`, { method: "DELETE" });
+      if (res.ok) {
+        showToast(`Product "${product.name}" deleted successfully`, "success");
+        setProducts((prev) => prev.filter((p) => p.id !== product.id));
+      } else {
+        const data = await res.json();
+        showToast(data.error ?? "Failed to delete product", "danger");
+      }
+    } catch {
+      showToast("Something went wrong deleting product", "danger");
+    }
   }
 
   function handleDownloadExport() {
@@ -106,6 +126,7 @@ export default function InventoryPage() {
             products={products}
             onEdit={handleEdit}
             onViewLabel={(product) => setLabelProduct(product)}
+            onDelete={handleDelete}
           />
         )}
       </div>

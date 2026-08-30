@@ -116,6 +116,16 @@ export async function saveDraftSale(input: SaveDraftInput) {
         throw new ApiError("Draft not found", 404);
       }
       await tx.saleItem.deleteMany({ where: { saleId: input.saleId } });
+      await tx.saleItem.createMany({
+        data: lineItems.map((item) => ({
+          saleId: input.saleId!,
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          lineDiscount: item.lineDiscount,
+          lineTotal: item.lineTotal,
+        })),
+      });
       return tx.sale.update({
         where: { id: input.saleId },
         data: {
@@ -125,7 +135,6 @@ export async function saveDraftSale(input: SaveDraftInput) {
           discountTotal,
           taxTotal,
           grandTotal,
-          items: { createMany: { data: lineItems } },
         },
         include: { items: true },
       });
@@ -318,3 +327,169 @@ export async function voidSale(id: string) {
     return tx.sale.update({ where: { id }, data: { status: "VOIDED" } });
   });
 }
+
+export interface EditSaleInput {
+  saleId: string;
+  customerName?: string;
+  customerPhone?: string;
+  items: CartLineInput[];
+  discountTotal?: number;
+  taxTotal?: number;
+  paymentMethod?: "CASH" | "CARD" | "UPI" | "OTHER";
+  amountPaid?: number;
+  adminId: string;
+  adminName: string;
+}
+
+export async function editSale(input: EditSaleInput) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.sale.findUnique({
+      where: { id: input.saleId },
+      include: {
+        customer: true,
+        exchangedInto: { select: { id: true, billNumber: true } },
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                barcode: true,
+                costPrice: true,
+                sellingPrice: true,
+                stockQty: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!existing || existing.status !== "COMPLETED") {
+      throw new ApiError("Only completed sales can be edited", 400);
+    }
+
+    if (existing.exchangedInto) {
+      throw new ApiError("Cannot edit a sale that has already been returned or exchanged", 400);
+    }
+
+    // 1. Snapshot previous state
+    const previousSnapshot = {
+      editedAt: new Date().toISOString(),
+      editedBy: input.adminName,
+      previousGrandTotal: Number(existing.grandTotal),
+      previousDiscountTotal: Number(existing.discountTotal),
+      previousTaxTotal: Number(existing.taxTotal),
+      previousSubtotal: Number(existing.subtotal),
+      previousPaymentMethod: existing.paymentMethod,
+      previousAmountPaid: existing.amountPaid ? Number(existing.amountPaid) : null,
+      previousCustomer: existing.customer ? { name: existing.customer.name, phone: existing.customer.phone } : null,
+      previousItems: existing.items.map((i) => ({
+        productId: i.productId,
+        productName: i.product.name,
+        barcode: i.product.barcode,
+        quantity: i.quantity,
+        unitPrice: Number(i.unitPrice),
+        lineDiscount: Number(i.lineDiscount),
+        lineTotal: Number(i.lineTotal),
+      })),
+    };
+
+    const existingHistory = Array.isArray(existing.editHistory)
+      ? (existing.editHistory as unknown as object[])
+      : [];
+    const updatedHistory = [...existingHistory, previousSnapshot];
+
+    // 2. Restore previous stock
+    for (const oldItem of existing.items) {
+      await tx.product.update({
+        where: { id: oldItem.productId },
+        data: { stockQty: { increment: oldItem.quantity } },
+      });
+      await tx.stockMovement.create({
+        data: {
+          productId: oldItem.productId,
+          type: "MANUAL_ADJUSTMENT",
+          quantity: oldItem.quantity,
+          saleId: existing.id,
+          note: `Bill #${existing.billNumber} edit: restock previous quantity (+${oldItem.quantity})`,
+          performedByAdminId: input.adminId,
+        },
+      });
+    }
+
+    // 3. Compute new line items & check new stock
+    const { lineItems, subtotal, productMap } = await computeLineItems(tx, input.items);
+    for (const item of input.items) {
+      const product = productMap.get(item.productId)!;
+      if (product.stockQty < item.quantity) {
+        throw new ApiError(`Not enough stock for ${product.name} (available ${product.stockQty})`, 409);
+      }
+    }
+
+    // 4. Deduct new stock
+    for (const item of input.items) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stockQty: { decrement: item.quantity } },
+      });
+      await tx.stockMovement.create({
+        data: {
+          productId: item.productId,
+          type: "SALE",
+          quantity: -item.quantity,
+          saleId: existing.id,
+          note: `Bill #${existing.billNumber} edit: deducted new quantity (-${item.quantity})`,
+          performedByAdminId: input.adminId,
+        },
+      });
+    }
+
+    // 5. Delete old saleItems and insert new ones
+    await tx.saleItem.deleteMany({ where: { saleId: existing.id } });
+    await tx.saleItem.createMany({
+      data: lineItems.map((item) => ({
+        saleId: existing.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineDiscount: item.lineDiscount,
+        lineTotal: item.lineTotal,
+      })),
+    });
+
+    const customerId = await resolveCustomer(tx, input.customerName, input.customerPhone);
+    const discountTotal = input.discountTotal ?? 0;
+    const taxTotal = input.taxTotal ?? 0;
+    const grandTotal = subtotal - discountTotal + taxTotal;
+    const paymentMethod = input.paymentMethod ?? existing.paymentMethod;
+    const amountPaid = input.amountPaid !== undefined ? input.amountPaid : grandTotal;
+
+    const updatedSale = await tx.sale.update({
+      where: { id: existing.id },
+      data: {
+        ...(customerId
+          ? { customer: { connect: { id: customerId } } }
+          : existing.customerId
+          ? { customer: { connect: { id: existing.customerId } } }
+          : {}),
+        subtotal,
+        discountTotal,
+        taxTotal,
+        grandTotal,
+        paymentMethod,
+        amountPaid,
+        isEdited: true,
+        editHistory: updatedHistory,
+      },
+      include: {
+        items: { include: { product: true } },
+        customer: true,
+        cashier: { select: { name: true } },
+      },
+    });
+
+    return updatedSale;
+  });
+}
+

@@ -143,6 +143,9 @@ model Sale {
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 
+  isEdited    Boolean   @default(false)
+  editHistory Json?
+
   items          SaleItem[]
   stockMovements StockMovement[]
 

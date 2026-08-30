@@ -96,25 +96,29 @@ export function BillSummary({
           <div className="flex items-center justify-between gap-2 text-sm">
             <span className="text-muted">Discount (₹)</span>
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               value={discountTotal || ""}
-              onChange={(e) => onDiscountChange(Number(e.target.value) || 0)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^\d*\.?\d*$/.test(v)) onDiscountChange(parseFloat(v) || 0);
+              }}
               className="w-28 rounded-md border border-border bg-white px-2.5 py-1 text-right text-sm font-medium focus:ring-1 focus:ring-accent focus:border-accent outline-none"
-              placeholder="0.00"
+              placeholder="0"
             />
           </div>
           <div className="flex items-center justify-between gap-2 text-sm">
             <span className="text-muted">Tax / GST (₹)</span>
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               value={taxTotal || ""}
-              onChange={(e) => onTaxChange(Number(e.target.value) || 0)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^\d*\.?\d*$/.test(v)) onTaxChange(parseFloat(v) || 0);
+              }}
               className="w-28 rounded-md border border-border bg-white px-2.5 py-1 text-right text-sm font-medium focus:ring-1 focus:ring-accent focus:border-accent outline-none"
-              placeholder="0.00"
+              placeholder="0"
             />
           </div>
           <div className="flex items-center justify-between border-t border-dashed border-border pt-3 mt-1 text-base font-bold text-foreground">
@@ -137,12 +141,14 @@ export function BillSummary({
           </Select>
           <Input
             label="Amount Paid (₹)"
-            type="number"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={amountPaid}
-            onChange={(e) => onAmountPaidChange(e.target.value)}
-            placeholder={grandTotal > 0 ? String(grandTotal) : "0.00"}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^\d*\.?\d*$/.test(v)) onAmountPaidChange(v);
+            }}
+            placeholder={grandTotal > 0 ? String(grandTotal) : "0"}
           />
         </div>
 

@@ -266,12 +266,15 @@ export default function BarcodesPage() {
                     -
                   </button>
                   <input
-                    type="number"
-                    min={1}
+                    type="text"
+                    inputMode="numeric"
                     value={item.qty}
                     onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (!isNaN(val) && val > 0) setQty(item.product.id, val);
+                      const v = e.target.value;
+                      if (/^\d*$/.test(v)) {
+                        const val = parseInt(v, 10);
+                        if (!isNaN(val) && val > 0) setQty(item.product.id, val);
+                      }
                     }}
                     className="h-6 w-10 sm:h-7 sm:w-12 rounded-lg border border-border text-center text-xs font-bold focus:ring-1 focus:ring-accent outline-none"
                   />

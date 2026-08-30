@@ -157,21 +157,25 @@ function ProductFormContent({
       <div className="grid grid-cols-2 gap-3">
         <Input
           label="Cost Price"
-          type="number"
-          step="0.01"
-          min="0"
+          type="text"
+          inputMode="decimal"
           value={form.costPrice}
-          onChange={(e) => updateField("costPrice", e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || /^\d*\.?\d*$/.test(v)) updateField("costPrice", v);
+          }}
           error={errors.costPrice}
           required
         />
         <Input
           label="Selling Price"
-          type="number"
-          step="0.01"
-          min="0"
+          type="text"
+          inputMode="decimal"
           value={form.sellingPrice}
-          onChange={(e) => updateField("sellingPrice", e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || /^\d*\.?\d*$/.test(v)) updateField("sellingPrice", v);
+          }}
           error={errors.sellingPrice}
           required
         />
@@ -180,20 +184,26 @@ function ProductFormContent({
         {!isEditing && (
           <Input
             label="Initial Stock"
-            type="number"
-            min="0"
+            type="text"
+            inputMode="numeric"
             value={form.stockQty}
-            onChange={(e) => updateField("stockQty", e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^\d*$/.test(v)) updateField("stockQty", v);
+            }}
             error={errors.stockQty}
             required
           />
         )}
         <Input
           label="Low Stock Alert"
-          type="number"
-          min="0"
+          type="text"
+          inputMode="numeric"
           value={form.lowStockAlert}
-          onChange={(e) => updateField("lowStockAlert", e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || /^\d*$/.test(v)) updateField("lowStockAlert", v);
+          }}
           error={errors.lowStockAlert}
           required
         />

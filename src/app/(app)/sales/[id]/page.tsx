@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { getSaleById } from "@/server/services/saleService";
+import { getSession } from "@/lib/session";
 import { ApiError } from "@/lib/api-error";
 import { BillView } from "@/components/sales/BillView";
 
 export default async function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await getSession();
 
   let sale;
   try {
@@ -19,6 +21,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto w-full flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
       <BillView
+        isAdmin={session?.role === "ADMIN"}
         sale={{
           id: sale.id,
           billNumber: sale.billNumber,
@@ -32,6 +35,8 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
           amountPaid: sale.amountPaid?.toString() ?? null,
           completedAt: sale.completedAt?.toISOString() ?? null,
           createdAt: sale.createdAt.toISOString(),
+          isEdited: sale.isEdited,
+          editHistory: sale.editHistory,
           customer: sale.customer ? { name: sale.customer.name, phone: sale.customer.phone } : null,
           cashier: sale.cashier,
           items: sale.items.map((item) => ({

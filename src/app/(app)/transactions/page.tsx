@@ -16,6 +16,26 @@ interface TransactionItem {
   product: { id: string; name: string; barcode: string };
 }
 
+interface EditHistorySnapshot {
+  editedAt: string;
+  editedBy: string;
+  previousGrandTotal: number;
+  previousDiscountTotal: number;
+  previousTaxTotal: number;
+  previousSubtotal: number;
+  previousPaymentMethod: string | null;
+  previousCustomer: { name: string; phone: string } | null;
+  previousItems: {
+    productId: string;
+    productName: string;
+    barcode: string;
+    quantity: number;
+    unitPrice: number;
+    lineDiscount: number;
+    lineTotal: number;
+  }[];
+}
+
 interface TransactionSale {
   id: string;
   billNumber: string;
@@ -28,6 +48,8 @@ interface TransactionSale {
   paymentMethod: string | null;
   amountPaid: number | null;
   completedAt: string;
+  isEdited?: boolean;
+  editHistory?: unknown;
   customer: { name: string; phone: string | null } | null;
   cashier: { name: string; username: string };
   items: TransactionItem[];
@@ -60,10 +82,17 @@ export default function TransactionsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [quickDatePreset, setQuickDatePreset] = useState<DatePreset>("ALL");
 
-  // Pagination
+  // Pagination & user
   const PAGE_SIZE = 10;
   const [currentPage, setCurrentPage] = useState(1);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Expanded edit audit histories
+  const [expandedEdits, setExpandedEdits] = useState<Record<string, boolean>>({});
+
+  function toggleEditHistory(id: string) {
+    setExpandedEdits((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
 
   useEffect(() => {
     async function fetchUser() {
@@ -244,16 +273,16 @@ export default function TransactionsPage() {
           </div>
           <input
             type="search"
-            placeholder="Search by Customer Name, Mobile Number (9876...), Bill Number (#1234), or Item title…"
+            placeholder="Search by Customer Name, Mobile Number (9876..), Bill Number (#1234), or Item title..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-slate-50/50 text-sm text-foreground placeholder:text-muted focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent font-medium transition-all"
+            className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-slate-50/50 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:bg-white transition-all"
           />
         </div>
 
         {/* Quick Date Range Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="text-xs font-semibold text-slate-500 mr-1.5">Quick Date:</span>
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/70">
+          <span className="text-xs font-bold text-muted uppercase tracking-wider mr-1">Quick Date:</span>
           {(
             [
               { key: "ALL", label: "All Time" },
@@ -262,18 +291,18 @@ export default function TransactionsPage() {
               { key: "LAST_7", label: "Last 7 Days" },
               { key: "THIS_MONTH", label: "This Month" },
             ] as const
-          ).map((preset) => (
+          ).map((item) => (
             <button
-              key={preset.key}
+              key={item.key}
               type="button"
-              onClick={() => applyDatePreset(preset.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                quickDatePreset === preset.key
+              onClick={() => applyDatePreset(item.key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                quickDatePreset === item.key
                   ? "bg-accent text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {preset.label}
+              {item.label}
             </button>
           ))}
         </div>
@@ -332,7 +361,9 @@ export default function TransactionsPage() {
             </select>
           </div>
         </div>
-      </div>      {/* Transaction List */}
+      </div>
+
+      {/* Transaction List */}
       {isLoading ? (
         <div className="flex justify-center py-20">
           <Spinner />
@@ -376,11 +407,18 @@ export default function TransactionsPage() {
                   : `Bill #${sale.billNumber}`;
 
                 const canExchange = sale.status === "COMPLETED" && !sale.exchangedInto;
+                const canEdit = sale.status === "COMPLETED" && !sale.exchangedInto;
+                const historyList = (Array.isArray(sale.editHistory) ? sale.editHistory : []) as EditHistorySnapshot[];
+                const isExpanded = !!expandedEdits[sale.id];
 
                 return (
                   <div
                     key={sale.id}
-                    className="p-4 sm:p-5 hover:bg-slate-50/60 transition-colors flex flex-col gap-3"
+                    className={`p-4 sm:p-5 transition-all flex flex-col gap-3 ${
+                      sale.isEdited
+                        ? "bg-amber-50/30 border-l-4 border-l-amber-500 hover:bg-amber-50/50"
+                        : "hover:bg-slate-50/60"
+                    }`}
                   >
                     {/* Top Row: Customer, Meta & Actions */}
                     <div className="flex items-start justify-between gap-3">
@@ -408,6 +446,9 @@ export default function TransactionsPage() {
                             </Badge>
                           )}
                           {sale.status === "VOIDED" && <Badge tone="danger">Voided</Badge>}
+                          {sale.isEdited && (
+                            <Badge tone="warning">Edited / Revised</Badge>
+                          )}
                         </div>
 
                         <p className="text-xs text-muted mt-1 flex items-center gap-2 flex-wrap">
@@ -438,7 +479,7 @@ export default function TransactionsPage() {
                           </p>
                         )}
 
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap justify-end">
                           <Link href={`/sales/${sale.id}`}>
                             <button
                               type="button"
@@ -450,6 +491,20 @@ export default function TransactionsPage() {
                               Bill
                             </button>
                           </Link>
+
+                          {canEdit && (
+                            <Link href={`/sales/${sale.id}/edit`}>
+                              <button
+                                type="button"
+                                className="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                              >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit Bill
+                              </button>
+                            </Link>
+                          )}
 
                           {canExchange ? (
                             <Link href={`/sales/${sale.id}/exchange`}>
@@ -487,6 +542,80 @@ export default function TransactionsPage() {
                       </div>
                     </div>
 
+                    {/* Edit History Audit Toggle (Previous vs Updated) */}
+                    {sale.isEdited && historyList.length > 0 && (
+                      <div className="mt-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleEditHistory(sale.id)}
+                          className="text-xs font-bold text-amber-800 bg-amber-100/70 hover:bg-amber-200/80 px-3 py-1.5 rounded-lg border border-amber-300/80 flex items-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <span>📝</span>
+                          <span>Bill Edit History ({historyList.length} revision{historyList.length > 1 ? "s" : ""}) — Click to compare Original vs Updated</span>
+                          <span className="ml-auto font-mono">{isExpanded ? "▲ Hide" : "▼ View"}</span>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="mt-2 rounded-xl border-2 border-amber-300/80 bg-white p-3.5 text-xs shadow-xs flex flex-col gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Left: Previous Original Bill */}
+                              {historyList.map((hist, idx) => (
+                                <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 flex flex-col gap-2">
+                                  <div className="flex items-center justify-between border-b border-slate-200 pb-1 font-bold text-slate-700">
+                                    <span className="text-[11px] uppercase tracking-wider text-slate-500">
+                                      Revision #{idx + 1} (Before Edit)
+                                    </span>
+                                    <span className="text-[11px] text-slate-500">{formatDateTime(hist.editedAt)}</span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-500">Edited by: <strong>{hist.editedBy}</strong></p>
+                                  <div className="flex justify-between font-bold text-sm">
+                                    <span>Original Total:</span>
+                                    <span className="line-through text-slate-600">{formatCurrency(hist.previousGrandTotal)}</span>
+                                  </div>
+                                  <div className="border-t border-slate-200/80 pt-1.5">
+                                    <p className="font-semibold text-[11px] text-slate-600 mb-1">Previous Items:</p>
+                                    <ul className="divide-y divide-slate-200/50 text-[11px]">
+                                      {hist.previousItems.map((item, itemIdx) => (
+                                        <li key={itemIdx} className="py-1 flex justify-between">
+                                          <span>{item.quantity}× {item.productName}</span>
+                                          <span className="font-mono text-slate-600">{formatCurrency(item.lineTotal)}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Right: Current Updated Bill */}
+                              <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-50/30 p-3 flex flex-col gap-2">
+                                <div className="flex items-center justify-between border-b border-emerald-200 pb-1 font-bold text-emerald-900">
+                                  <span className="text-[11px] uppercase tracking-wider text-emerald-700">
+                                    Current Bill (After Edit)
+                                  </span>
+                                  <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded font-bold">Active</span>
+                                </div>
+                                <div className="flex justify-between font-extrabold text-sm text-emerald-900">
+                                  <span>Current Total:</span>
+                                  <span className="text-base font-black text-emerald-700">{formatCurrency(sale.grandTotal)}</span>
+                                </div>
+                                <div className="border-t border-emerald-200/80 pt-1.5">
+                                  <p className="font-semibold text-[11px] text-emerald-800 mb-1">Current Items:</p>
+                                  <ul className="divide-y divide-emerald-200/50 text-[11px]">
+                                    {sale.items.map((item) => (
+                                      <li key={item.id} className="py-1 flex justify-between font-medium">
+                                        <span>{item.quantity}× {item.product.name}</span>
+                                        <span className="font-mono font-bold text-emerald-800">{formatCurrency(item.lineTotal)}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Exchange / Return reference links */}
                     {(sale.originalSale || sale.exchangedInto) && (
                       <div className="text-[11px] text-muted border-t border-slate-100 pt-2">
@@ -518,33 +647,20 @@ export default function TransactionsPage() {
                 >
                   ← Prev
                 </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                  .reduce<(number | "...")[]>((acc, p, idx, arr) => {
-                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((item, idx) =>
-                    item === "..." ? (
-                      <span key={`ellipsis-${idx}`} className="px-1 text-xs text-muted">…</span>
-                    ) : (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setCurrentPage(item as number)}
-                        className={`h-8 w-8 rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
-                          currentPage === item
-                            ? "bg-accent text-white border-accent shadow-xs"
-                            : "border-border bg-white text-slate-700 hover:bg-slate-100"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    )
-                  )}
-
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`h-8 w-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      currentPage === pageNum
+                        ? "bg-accent text-white shadow-xs"
+                        : "border border-border bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
                 <button
                   type="button"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}

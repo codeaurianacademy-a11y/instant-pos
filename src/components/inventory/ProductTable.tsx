@@ -9,9 +9,10 @@ interface ProductTableProps {
   products: ProductDTO[];
   onEdit: (product: ProductDTO) => void;
   onViewLabel: (product: ProductDTO) => void;
+  onDelete?: (product: ProductDTO) => void;
 }
 
-export function ProductTable({ products, onEdit, onViewLabel }: ProductTableProps) {
+export function ProductTable({ products, onEdit, onViewLabel, onDelete }: ProductTableProps) {
   if (products.length === 0) {
     return (
       <div className="p-8 text-center bg-white">
@@ -55,6 +56,18 @@ export function ProductTable({ products, onEdit, onViewLabel }: ProductTableProp
                     <Button size="sm" variant="secondary" onClick={() => onViewLabel(product)}>
                       Label
                     </Button>
+                    {onDelete && (
+                      <button
+                        type="button"
+                        onClick={() => onDelete(product)}
+                        title="Delete Product"
+                        className="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -97,10 +110,19 @@ export function ProductTable({ products, onEdit, onViewLabel }: ProductTableProp
                 <button
                   type="button"
                   onClick={() => onViewLabel(product)}
-                  className="px-2.5 py-1 rounded-md border border-border bg-slate-50 font-semibold text-slate-700 hover:bg-slate-100 text-xs"
+                  className="px-2.5 py-1 rounded-md border border-border bg-slate-50 font-semibold text-slate-700 hover:bg-slate-100 text-xs cursor-pointer"
                 >
                   Label
                 </button>
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(product)}
+                    className="px-2.5 py-1 rounded-md border border-red-200 bg-red-50 font-semibold text-red-600 hover:bg-red-100 text-xs cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           </div>
