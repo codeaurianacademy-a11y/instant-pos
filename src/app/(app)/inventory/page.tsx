@@ -7,6 +7,7 @@ import { ProductTable } from "@/components/inventory/ProductTable";
 import { ProductFormModal } from "@/components/inventory/ProductFormModal";
 import { ImportCsvModal } from "@/components/inventory/ImportCsvModal";
 import { BarcodeLabelModal } from "@/components/inventory/BarcodeLabelModal";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { useToast } from "@/components/ui/Toast";
 import type { ProductDTO } from "@/lib/types";
 
@@ -19,6 +20,8 @@ export default function InventoryPage() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductDTO | null>(null);
   const [labelProduct, setLabelProduct] = useState<ProductDTO | null>(null);
+  const [productToDelete, setProductToDelete] = useState<ProductDTO | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchProducts = useCallback(async (searchTerm: string) => {
     setIsLoading(true);
@@ -50,21 +53,27 @@ export default function InventoryPage() {
     setEditingProduct(null);
   }
 
-  async function handleDelete(product: ProductDTO) {
-    if (!window.confirm(`Are you sure you want to delete "${product.name}" (${product.barcode})?`)) {
-      return;
-    }
+  function handleDelete(product: ProductDTO) {
+    setProductToDelete(product);
+  }
+
+  async function executeDelete() {
+    if (!productToDelete) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/products/${product.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/products/${productToDelete.id}`, { method: "DELETE" });
       if (res.ok) {
-        showToast(`Product "${product.name}" deleted successfully`, "success");
-        setProducts((prev) => prev.filter((p) => p.id !== product.id));
+        showToast(`"${productToDelete.name}" deleted successfully`, "success");
+        setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+        setProductToDelete(null);
       } else {
         const data = await res.json();
         showToast(data.error ?? "Failed to delete product", "danger");
       }
     } catch {
       showToast("Something went wrong deleting product", "danger");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -151,6 +160,17 @@ export default function InventoryPage() {
           product={labelProduct}
         />
       )}
+
+      <ConfirmDeleteModal
+        isOpen={!!productToDelete}
+        title="Delete Product?"
+        description="Are you sure you want to permanently delete this product? All associated data will be retained for historical records, but the product will no longer be available for new sales."
+        itemLabel={productToDelete ? `${productToDelete.name} — SKU: ${productToDelete.barcode}` : undefined}
+        confirmLabel="Yes, Delete Product"
+        onConfirm={executeDelete}
+        onCancel={() => setProductToDelete(null)}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

@@ -8,9 +8,11 @@ export function formatCurrency(amount: number | string): string {
   return currencyFormatter.format(Number(amount));
 }
 
+// Always display in IST regardless of server/browser timezone
 const dateTimeFormatter = new Intl.DateTimeFormat("en-IN", {
   dateStyle: "medium",
   timeStyle: "short",
+  timeZone: "Asia/Kolkata",
 });
 
 export function formatDateTime(date: Date | string): string {
