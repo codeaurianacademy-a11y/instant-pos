@@ -15,13 +15,6 @@ import {
 } from "@/lib/cart";
 import type { ProductDTO } from "@/lib/types";
 
-interface DraftSaleItemDTO {
-  product: ProductDTO;
-  quantity: number;
-  unitPrice: string;
-  lineDiscount: string;
-}
-
 function SalesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -56,17 +49,35 @@ function SalesPageContent() {
         }
 
         const sale = data.sale;
-        setCart(
-          (sale.items as DraftSaleItemDTO[]).map((item) => ({
-            product: { ...item.product, sellingPrice: item.unitPrice },
-            quantity: item.quantity,
-            lineDiscount: Number(item.lineDiscount),
-          }))
-        );
-        setDiscountTotal(Number(sale.discountTotal));
-        setTaxTotal(Number(sale.taxTotal));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const loadedCart: CartLine[] = (sale.items as any[]).map((item) => ({
+          product: {
+            id: item.product?.id || item.productId,
+            name: item.product?.name || "Item",
+            barcode: item.product?.barcode || "",
+            category: item.product?.category || "General",
+            costPrice: String(item.product?.costPrice || "0"),
+            sellingPrice: String(item.unitPrice || item.product?.sellingPrice || "0"),
+            stockQty: item.product?.stockQty ?? 100,
+            lowStockAlert: item.product?.lowStockAlert ?? 5,
+            attributes: null,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          quantity: item.quantity,
+          lineDiscount: Number(item.lineDiscount || 0),
+        }));
+
+        setCart(loadedCart);
+        setDiscountTotal(Number(sale.discountTotal || 0));
+        setTaxTotal(Number(sale.taxTotal || 0));
         setCustomerName(sale.customer?.name ?? "");
-        setCustomerPhone(sale.customer?.phone ?? "");
+        setCustomerPhone(
+          sale.customer?.phone && !sale.customer.phone.startsWith("phone_")
+            ? sale.customer.phone
+            : ""
+        );
       } finally {
         setIsLoadingDraft(false);
       }
@@ -122,6 +133,11 @@ function SalesPageContent() {
       return;
     }
 
+    if (!customerPhone || customerPhone.trim().length < 3) {
+      showToast("Customer mobile number is required to generate bill", "danger");
+      return;
+    }
+
     const paid = Number(amountPaid);
     if (!amountPaid || paid < grandTotal) {
       showToast("Amount paid must cover the total due", "danger");
@@ -135,8 +151,8 @@ function SalesPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           saleId: draftId ?? undefined,
-          customerName: customerName || undefined,
-          customerPhone: customerPhone || undefined,
+          customerName: customerName.trim() || undefined,
+          customerPhone: customerPhone.trim(),
           items: buildItemsPayload(),
           discountTotal: discountTotal || undefined,
           taxTotal: taxTotal || undefined,
@@ -167,6 +183,11 @@ function SalesPageContent() {
       return;
     }
 
+    if (!customerPhone || customerPhone.trim().length < 3) {
+      showToast("Customer mobile number is required to save draft order", "danger");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/sales/draft", {
@@ -174,8 +195,8 @@ function SalesPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           saleId: draftId ?? undefined,
-          customerName: customerName || undefined,
-          customerPhone: customerPhone || undefined,
+          customerName: customerName.trim() || undefined,
+          customerPhone: customerPhone.trim(),
           items: buildItemsPayload(),
           discountTotal: discountTotal || undefined,
           taxTotal: taxTotal || undefined,
@@ -210,7 +231,7 @@ function SalesPageContent() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left / Main: Scanner & Cart (7 cols on lg, 8 on xl) */}
+        {/* Left / Main: Scanner & Cart (7 cols on lg) */}
         <div className="lg:col-span-7 xl:col-span-7 flex flex-col gap-4">
           <ScannerInput onScan={handleScan} disabled={isScanning || isLoadingDraft} />
           <CartPanel cart={cart} onQuantityChange={handleQuantityChange} onRemove={handleRemove} />

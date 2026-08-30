@@ -40,20 +40,39 @@ export async function createExchange(input: CreateExchangeInput) {
       }
     }
 
-    const returnedProductIds = input.returnedItems.map((i) => i.productId);
-    const newProductIds = input.newItems.map((i) => i.productId);
-    const allProducts = await tx.product.findMany({
-      where: { id: { in: [...returnedProductIds, ...newProductIds] } },
-    });
-    const productMap = new Map(allProducts.map((p) => [p.id, p]));
+    // --- Calculate returned credit using what customer ACTUALLY PAID ---
+    // The original sale may have a global discount applied.
+    // We distribute it proportionally across line items.
+    const saleSubtotal = Number(originalSale.subtotal);
+    const saleGrandTotal = Number(originalSale.grandTotal);
+    const discountRatio = saleSubtotal > 0 ? saleGrandTotal / saleSubtotal : 1;
 
     let returnedTotal = 0;
     for (const returned of input.returnedItems) {
-      const product = productMap.get(returned.productId)!;
-      returnedTotal += Number(product.sellingPrice) * returned.quantity;
+      const originalLine = originalSale.items.find((i) => i.productId === returned.productId)!;
+      // lineTotal already has per-line lineDiscount applied; now apply global discount ratio
+      const effectiveLineTotal = Number(originalLine.lineTotal) * discountRatio;
+      const effectiveUnitPrice = originalLine.quantity > 0 ? effectiveLineTotal / originalLine.quantity : 0;
+      returnedTotal += effectiveUnitPrice * returned.quantity;
     }
 
+    // --- Calculate new items total from current selling price ---
+    const newProductIds = input.newItems.map((i) => i.productId);
+    const returnedProductIds = input.returnedItems.map((i) => i.productId);
+    const allProducts = await tx.product.findMany({
+      where: { id: { in: [...new Set([...returnedProductIds, ...newProductIds])] } },
+    });
+    const productMap = new Map(allProducts.map((p) => [p.id, p]));
+
     let newTotal = 0;
+    const newLineItems: {
+      productId: string;
+      quantity: number;
+      unitPrice: number;
+      lineDiscount: number;
+      lineTotal: number;
+    }[] = [];
+
     for (const newItem of input.newItems) {
       const product = productMap.get(newItem.productId);
       if (!product || !product.isActive) {
@@ -62,10 +81,20 @@ export async function createExchange(input: CreateExchangeInput) {
       if (product.stockQty < newItem.quantity) {
         throw new ApiError(`Not enough stock for ${product.name}`, 409);
       }
-      newTotal += Number(product.sellingPrice) * newItem.quantity;
+      const unitPrice = Number(product.sellingPrice);
+      const lineTotal = unitPrice * newItem.quantity;
+      newTotal += lineTotal;
+      newLineItems.push({
+        productId: newItem.productId,
+        quantity: newItem.quantity,
+        unitPrice,
+        lineDiscount: 0,
+        lineTotal,
+      });
     }
 
-    const grandTotal = newTotal - returnedTotal;
+    // grandTotal: positive = customer pays more, negative = we owe refund
+    const grandTotal = parseFloat((newTotal - returnedTotal).toFixed(2));
 
     const exchangeSale = await tx.sale.create({
       data: {
@@ -75,30 +104,22 @@ export async function createExchange(input: CreateExchangeInput) {
         customerId: originalSale.customerId,
         cashierId: input.cashierId,
         subtotal: newTotal,
-        discountTotal: returnedTotal,
+        discountTotal: parseFloat(returnedTotal.toFixed(2)), // returned credit
         taxTotal: 0,
         grandTotal,
         paymentMethod: input.paymentMethod,
-        amountPaid: grandTotal,
+        amountPaid: grandTotal > 0 ? grandTotal : 0,
         completedAt: new Date(),
         items: {
           createMany: {
-            data: input.newItems.map((item) => {
-              const product = productMap.get(item.productId)!;
-              return {
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: Number(product.sellingPrice),
-                lineDiscount: 0,
-                lineTotal: Number(product.sellingPrice) * item.quantity,
-              };
-            }),
+            data: newLineItems,
           },
         },
       },
       include: { items: true },
     });
 
+    // Restore stock for returned items
     for (const returned of input.returnedItems) {
       await tx.product.update({
         where: { id: returned.productId },
@@ -115,6 +136,7 @@ export async function createExchange(input: CreateExchangeInput) {
       });
     }
 
+    // Decrement stock for new items
     for (const newItem of input.newItems) {
       await tx.product.update({
         where: { id: newItem.productId },

@@ -37,7 +37,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       });
     }
 
-    const { stockAdjustment, ...productFields } = data;
+    const { stockAdjustment: _unused, ...productFields } = data;
     const hasProductFields = Object.keys(productFields).length > 0;
 
     const product = hasProductFields

@@ -41,6 +41,10 @@ export function BillView({ sale }: BillViewProps) {
     window.print();
   }
 
+  const shortBillNo = sale.billNumber.length > 10 
+    ? `Bill #${sale.billNumber.slice(-8).toUpperCase()}` 
+    : `Bill #${sale.billNumber}`;
+
   return (
     <div className="flex flex-col gap-6 max-w-xl mx-auto w-full">
       <div id="bill-print-area" className="w-full rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-xs">
@@ -49,10 +53,14 @@ export function BillView({ sale }: BillViewProps) {
             POS
           </div>
           <h2 className="text-xl font-bold text-foreground tracking-tight">Instant POS</h2>
-          <p className="text-xs font-mono text-muted mt-0.5">Bill #{sale.billNumber}</p>
+          <p className="text-xs font-mono text-muted mt-0.5">{shortBillNo}</p>
           
           <div className="flex items-center justify-center gap-2 mt-2">
-            {sale.type === "EXCHANGE" && <Badge tone="accent">Exchange Bill</Badge>}
+            {sale.type === "EXCHANGE" && (
+              <Badge tone={sale.items.length === 0 ? "danger" : "accent"}>
+                {sale.items.length === 0 ? "Return Bill" : "Exchange Bill"}
+              </Badge>
+            )}
             {sale.status === "VOIDED" && <Badge tone="danger">Voided</Badge>}
             {sale.status === "COMPLETED" && sale.type !== "EXCHANGE" && (
               <Badge tone="success">Completed</Badge>
@@ -68,24 +76,26 @@ export function BillView({ sale }: BillViewProps) {
         {sale.customer && (
           <div className="text-xs text-slate-600 mb-3 bg-slate-50/70 p-2.5 rounded-lg flex justify-between">
             <span>Customer: <strong>{sale.customer.name}</strong></span>
-            {sale.customer.phone && <span>Ph: {sale.customer.phone}</span>}
+            {sale.customer.phone && !sale.customer.phone.startsWith("phone_") && (
+              <span>Ph: <strong>{sale.customer.phone}</strong></span>
+            )}
           </div>
         )}
 
         {sale.originalSale && (
-          <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 p-2 rounded-lg mb-3 no-print flex items-center justify-between">
-            <span>Exchange against original bill:</span>
+          <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 p-2.5 rounded-lg mb-3 no-print flex items-center justify-between">
+            <span>{sale.items.length === 0 ? "Returned items from bill:" : "Exchange against original bill:"}</span>
             <Link href={`/sales/${sale.originalSale.id}`} className="font-bold underline hover:text-blue-900">
-              #{sale.originalSale.billNumber}
+              #{sale.originalSale.billNumber.slice(-8).toUpperCase()}
             </Link>
           </div>
         )}
 
         {sale.exchangedInto && (
-          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2 rounded-lg mb-3 no-print flex items-center justify-between">
-            <span>Items exchanged via bill:</span>
+          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2.5 rounded-lg mb-3 no-print flex items-center justify-between">
+            <span>{sale.exchangedInto ? "Items returned/exchanged via bill:" : ""}  </span>
             <Link href={`/sales/${sale.exchangedInto.id}`} className="font-bold underline hover:text-amber-900">
-              #{sale.exchangedInto.billNumber}
+              #{sale.exchangedInto.billNumber.slice(-8).toUpperCase()}
             </Link>
           </div>
         )}
@@ -123,7 +133,7 @@ export function BillView({ sale }: BillViewProps) {
           </div>
           {Number(sale.discountTotal) > 0 && (
             <div className="flex justify-between text-emerald-600 font-medium">
-              <span>Exchange / Discount credit</span>
+              <span>{sale.type === "EXCHANGE" && sale.items.length === 0 ? "Items returned (Credit)" : sale.type === "EXCHANGE" ? "Returned items credit" : "Discount applied"}</span>
               <span>-{formatCurrency(sale.discountTotal)}</span>
             </div>
           )}
@@ -134,7 +144,7 @@ export function BillView({ sale }: BillViewProps) {
             </div>
           )}
           <div className="flex justify-between text-lg font-extrabold border-t border-border pt-2 mt-1 text-foreground">
-            <span>Total Paid</span>
+            <span>Net Total</span>
             <span className="text-accent">{formatCurrency(sale.grandTotal)}</span>
           </div>
           {sale.paymentMethod && (

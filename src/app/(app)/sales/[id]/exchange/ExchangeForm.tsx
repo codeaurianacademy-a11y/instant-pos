@@ -25,7 +25,9 @@ export function ExchangeForm({ originalSaleId, originalBillNumber, returnableIte
   const router = useRouter();
   const { showToast } = useToast();
 
-  const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
+  const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>(
+    () => Object.fromEntries(returnableItems.map((item) => [item.productId, item.maxQuantity]))
+  );
   const [newItemsCart, setNewItemsCart] = useState<CartLine[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [isScanning, setIsScanning] = useState(false);
@@ -99,7 +101,7 @@ export function ExchangeForm({ originalSaleId, originalBillNumber, returnableIte
         return;
       }
 
-      showToast("Exchange completed", "success");
+      showToast(isExchange ? "Exchange completed" : "Return completed", "success");
       router.push(`/sales/${data.exchange.id}`);
     } catch {
       showToast("Something went wrong. Please try again.", "danger");
@@ -108,10 +110,13 @@ export function ExchangeForm({ originalSaleId, originalBillNumber, returnableIte
     }
   }
 
+  const isExchange = newItemsCart.length > 0;
+  const mode = isExchange ? "Return & Exchange" : "Return";
+
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">Exchange</h1>
+        <h1 className="text-xl font-semibold text-foreground">{mode}</h1>
         <p className="text-sm text-muted">Against bill {originalBillNumber}</p>
       </div>
 
@@ -130,7 +135,7 @@ export function ExchangeForm({ originalSaleId, originalBillNumber, returnableIte
 
       <Card>
         <CardHeader>
-          <CardTitle>New items</CardTitle>
+          <CardTitle>New items {!isExchange && <span className="text-xs font-normal text-muted ml-1">(optional — scan to exchange)</span>}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <ScannerInput onScan={handleScan} disabled={isScanning} />
@@ -171,7 +176,7 @@ export function ExchangeForm({ originalSaleId, originalBillNumber, returnableIte
           )}
 
           <Button size="lg" onClick={handleSubmit} isLoading={isSubmitting}>
-            Complete exchange
+            Complete {mode}
           </Button>
         </CardContent>
       </Card>

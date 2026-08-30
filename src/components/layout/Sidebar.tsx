@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
@@ -26,6 +26,14 @@ function SellIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  );
+}
+
+function TransactionsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
     </svg>
   );
 }
@@ -65,6 +73,7 @@ function ReportsIcon({ className }: { className?: string }) {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Home", adminOnly: true, icon: DashboardIcon },
   { href: "/sales", label: "Sell (POS)", shortLabel: "Sell", icon: SellIcon },
+  { href: "/transactions", label: "Transactions", shortLabel: "History", icon: TransactionsIcon },
   { href: "/sales/drafts", label: "Draft Orders", shortLabel: "Drafts", icon: DraftsIcon },
   { href: "/inventory", label: "Inventory", shortLabel: "Stock", adminOnly: true, icon: InventoryIcon },
   { href: "/barcodes", label: "Barcode Labels", shortLabel: "Barcodes", adminOnly: true, icon: BarcodeIcon },
@@ -77,6 +86,9 @@ function isNavActive(pathname: string, href: string): boolean {
   }
   if (href === "/sales/drafts") {
     return pathname === "/sales/drafts" || pathname.startsWith("/sales/drafts/");
+  }
+  if (href === "/transactions") {
+    return pathname === "/transactions" || pathname.startsWith("/transactions/");
   }
   if (href === "/dashboard") {
     return pathname === "/dashboard";
@@ -93,11 +105,6 @@ export function Sidebar({ user }: SidebarProps) {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Close mobile drawer on route change
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
-
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
@@ -106,7 +113,7 @@ export function Sidebar({ user }: SidebarProps) {
 
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || user.role === "ADMIN");
 
-  const NavLinks = () => (
+  const renderNavList = (onItemClick?: () => void) => (
     <div className="flex flex-col gap-1">
       <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">
         {user.role === "ADMIN" ? "Admin Navigation" : "Cashier Terminal"}
@@ -118,7 +125,7 @@ export function Sidebar({ user }: SidebarProps) {
           <Link
             key={item.href}
             href={item.href}
-            onClick={() => setIsMobileMenuOpen(false)}
+            onClick={onItemClick}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
               isActive
@@ -158,7 +165,7 @@ export function Sidebar({ user }: SidebarProps) {
 
         {/* Nav List */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col justify-between">
-          <NavLinks />
+          {renderNavList()}
 
           <div className="mx-2 mt-6 rounded-lg bg-slate-50 border border-border/80 p-3 text-xs text-slate-600">
             <div className="flex items-center gap-1.5 font-semibold text-slate-800 mb-1">
@@ -242,14 +249,12 @@ export function Sidebar({ user }: SidebarProps) {
       {/* 3. Mobile Slide-Over Drawer Menu (< lg) */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
             onClick={() => setIsMobileMenuOpen(false)}
             aria-hidden="true"
           />
 
-          {/* Drawer Content */}
           <div className="relative flex w-72 max-w-[80vw] flex-1 flex-col bg-white shadow-2xl z-10 animate-in slide-in-from-left duration-200">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-2">
@@ -268,7 +273,7 @@ export function Sidebar({ user }: SidebarProps) {
             </div>
 
             <nav className="flex-1 overflow-y-auto p-4">
-              <NavLinks />
+              {renderNavList(() => setIsMobileMenuOpen(false))}
             </nav>
 
             <div className="p-4 border-t border-border bg-slate-50">

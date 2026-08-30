@@ -57,30 +57,33 @@ export function BillSummary({
         <CardTitle className="text-sm uppercase font-bold tracking-wider text-slate-700">Checkout & Bill Summary</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 p-5">
-        {/* Customer Information */}
-        <div className="flex flex-col gap-2.5 bg-slate-50/70 p-3 rounded-lg border border-border/80">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+        {/* Customer Information - Phone is Mandatory */}
+        <div className="flex flex-col gap-2.5 bg-blue-50/40 p-3.5 rounded-xl border border-blue-100">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-800">
             <span>Customer Details</span>
-            <span className="text-[11px] font-normal text-muted">Optional (Walk-in)</span>
+            <span className="text-[11px] font-semibold text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-full">
+              Mobile Number Required *
+            </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Input
-              label="Customer Name"
+              label="Mobile Number *"
+              value={customerPhone}
+              onChange={(e) => onCustomerPhoneChange(e.target.value)}
+              placeholder="e.g. 9876543210"
+              required
+              className="h-9 text-xs font-semibold focus:ring-accent"
+            />
+            <Input
+              label="Customer Name (Optional)"
               value={customerName}
               onChange={(e) => onCustomerNameChange(e.target.value)}
               placeholder="e.g. Rahul Sharma"
               className="h-9 text-xs"
             />
-            <Input
-              label="Phone Number"
-              value={customerPhone}
-              onChange={(e) => onCustomerPhoneChange(e.target.value)}
-              placeholder="e.g. 9876543210"
-              className="h-9 text-xs"
-            />
           </div>
-          <p className="text-[10px] text-muted">
-            * Phone is used to identify & save customer purchase history.
+          <p className="text-[10px] text-slate-500">
+            * Bills and draft orders are tracked by customer mobile number for instant identification and exchange.
           </p>
         </div>
 

@@ -15,13 +15,25 @@ export async function getTodaysSalesSummary() {
     },
     select: {
       grandTotal: true,
+      discountTotal: true,
+      type: true,
       cashierId: true,
       cashier: { select: { name: true } },
     },
   });
 
+  // Revenue = sum of regular sales grandTotal
+  //           + exchange bills grandTotal (positive = extra collected, negative = refund given)
+  // This correctly nets out returns: e.g. Sale +430, Exchange -430 = net 0
   const totalAmount = sales.reduce((sum, sale) => sum + Number(sale.grandTotal), 0);
-  const billCount = sales.length;
+
+  const billCount = sales.filter((s) => s.type === "SALE").length;
+  const exchangeCount = sales.filter((s) => s.type === "EXCHANGE").length;
+  const totalDiscounts = sales.reduce((sum, sale) => {
+    // For EXCHANGE bills, discountTotal = returned credit (don't double count)
+    if (sale.type === "SALE") return sum + Number(sale.discountTotal);
+    return sum;
+  }, 0);
 
   const byCashierMap = new Map<string, { name: string; total: number; count: number }>();
   for (const sale of sales) {
@@ -35,14 +47,14 @@ export async function getTodaysSalesSummary() {
   }
 
   return {
-    totalAmount,
+    totalAmount: Math.max(0, totalAmount), // floor at 0 if all returns
     billCount,
+    exchangeCount,
+    totalDiscounts,
     byCashier: Array.from(byCashierMap.values()),
   };
 }
 
-// Compared in application code rather than a DB-level column-to-column filter —
-// keeps this independent of Prisma's fieldReference feature flag/stability status.
 export async function getLowStockProducts() {
   const products = await prisma.product.findMany({
     where: { isActive: true },
@@ -66,7 +78,7 @@ export async function getRecentTransactions() {
       grandTotal: true,
       completedAt: true,
       cashier: { select: { name: true } },
-      customer: { select: { name: true } },
+      customer: { select: { name: true, phone: true } },
     },
   });
 

@@ -13,7 +13,7 @@ const cartLineSchema = z.object({
 const completeSaleSchema = z.object({
   saleId: z.string().optional(),
   customerName: z.string().trim().optional(),
-  customerPhone: z.string().trim().optional(),
+  customerPhone: z.string().trim().min(3, "Customer mobile number is required"),
   items: z.array(cartLineSchema).min(1),
   discountTotal: z.number().nonnegative().optional(),
   taxTotal: z.number().nonnegative().optional(),

@@ -13,15 +13,20 @@ interface Transaction {
   grandTotal: number;
   completedAt: Date | null;
   cashier: { name: string };
-  customer: { name: string } | null;
+  customer: { name: string; phone?: string | null } | null;
 }
 
 export function RecentTransactions({ transactions }: { transactions: Transaction[] }) {
   return (
     <Card>
       <CardHeader className="flex items-center justify-between border-b border-border/80 pb-3.5">
-        <CardTitle className="text-base font-bold text-foreground">Recent transactions</CardTitle>
-        <span className="text-xs text-muted">Click to view bill or exchange</span>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base font-bold text-foreground">Recent transactions</CardTitle>
+          <span className="text-xs text-muted font-normal">• Click to view / exchange</span>
+        </div>
+        <Link href="/transactions" className="text-xs font-semibold text-accent hover:underline">
+          View All Transactions →
+        </Link>
       </CardHeader>
       <CardContent className="p-0">
         {transactions.length === 0 ? (
@@ -31,9 +36,15 @@ export function RecentTransactions({ transactions }: { transactions: Transaction
         ) : (
           <ul className="divide-y divide-border">
             {transactions.map((tx) => {
-              const displayName = tx.customer?.name && tx.customer.name.trim() !== "" 
-                ? tx.customer.name 
-                : "Walk-in Customer";
+              const hasName = tx.customer?.name && tx.customer.name.trim() !== "" && tx.customer.name.trim() !== "Walk-in" && tx.customer.name.trim() !== "Customer";
+              const hasPhone = tx.customer?.phone && tx.customer.phone.trim() !== "" && !tx.customer.phone.startsWith("phone_") && !tx.customer.phone.startsWith("temp_");
+              
+              const displayName = hasName 
+                ? tx.customer!.name 
+                : hasPhone 
+                  ? `Phone: ${tx.customer!.phone}` 
+                  : "Walk-in Customer";
+
               const shortBillNo = tx.billNumber.length > 10 
                 ? `Bill #${tx.billNumber.slice(-8).toUpperCase()}` 
                 : `Bill #${tx.billNumber}`;
@@ -49,11 +60,20 @@ export function RecentTransactions({ transactions }: { transactions: Transaction
                         <p className="text-sm font-bold text-foreground group-hover:text-accent transition-colors">
                           {displayName}
                         </p>
-                        {tx.type === "EXCHANGE" && <Badge tone="accent">Exchange</Badge>}
+                        {hasName && hasPhone && (
+                          <span className="text-xs font-mono text-blue-700 bg-blue-50 border border-blue-100 font-semibold px-2 py-0.5 rounded">
+                            {tx.customer!.phone}
+                          </span>
+                        )}
+                        {tx.type === "EXCHANGE" && (
+                          <Badge tone={tx.grandTotal <= 0 ? "danger" : "accent"}>
+                            {tx.grandTotal <= 0 ? "Return" : "Exchange"}
+                          </Badge>
+                        )}
                         {tx.status === "VOIDED" && <Badge tone="danger">Voided</Badge>}
                       </div>
                       <p className="text-xs text-muted truncate mt-0.5">
-                        <span className="font-mono text-slate-500">{shortBillNo}</span>
+                        <span className="font-mono text-slate-500 font-medium">{shortBillNo}</span>
                         <span> • Cashier: {tx.cashier.name}</span>
                         {tx.completedAt && <span> • {formatDateTime(tx.completedAt)}</span>}
                       </p>

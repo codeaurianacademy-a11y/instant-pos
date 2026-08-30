@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -34,31 +34,34 @@ const emptyForm: FormState = {
   lowStockAlert: "5",
 };
 
-export function ProductFormModal({ open, onClose, onSaved, product }: ProductFormModalProps) {
+function ProductFormContent({
+  product,
+  onClose,
+  onSaved,
+}: {
+  product: ProductDTO | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const { showToast } = useToast();
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const isEditing = product !== null;
 
-  useEffect(() => {
-    if (!open) return;
-    if (product) {
-      setForm({
-        name: product.name,
-        barcode: product.barcode,
-        category: product.category,
-        costPrice: product.costPrice,
-        sellingPrice: product.sellingPrice,
-        stockQty: String(product.stockQty),
-        lowStockAlert: String(product.lowStockAlert),
-      });
-    } else {
-      setForm(emptyForm);
-    }
-    setErrors({});
-  }, [open, product]);
+  const [form, setForm] = useState<FormState>(() =>
+    product
+      ? {
+          name: product.name,
+          barcode: product.barcode,
+          category: product.category,
+          costPrice: product.costPrice,
+          sellingPrice: product.sellingPrice,
+          stockQty: String(product.stockQty),
+          lowStockAlert: String(product.lowStockAlert),
+        }
+      : emptyForm
+  );
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -127,82 +130,97 @@ export function ProductFormModal({ open, onClose, onSaved, product }: ProductFor
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={isEditing ? "Edit product" : "Add product"}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Input
+        label="Product Name"
+        value={form.name}
+        onChange={(e) => updateField("name", e.target.value)}
+        error={errors.name}
+        required
+        autoFocus
+      />
+      <Input
+        label="Barcode"
+        value={form.barcode}
+        onChange={(e) => updateField("barcode", e.target.value)}
+        placeholder={isEditing ? undefined : "Leave blank to auto-generate"}
+        disabled={isEditing}
+        error={errors.barcode}
+      />
+      <Input
+        label="Category"
+        value={form.category}
+        onChange={(e) => updateField("category", e.target.value)}
+        error={errors.category}
+        required
+      />
+      <div className="grid grid-cols-2 gap-3">
         <Input
-          label="Name"
-          value={form.name}
-          onChange={(e) => updateField("name", e.target.value)}
-          error={errors.name}
-          autoFocus
+          label="Cost Price"
+          type="number"
+          step="0.01"
+          min="0"
+          value={form.costPrice}
+          onChange={(e) => updateField("costPrice", e.target.value)}
+          error={errors.costPrice}
+          required
         />
         <Input
-          label={isEditing ? "Barcode" : "Barcode (leave blank to auto-generate)"}
-          value={form.barcode}
-          onChange={(e) => updateField("barcode", e.target.value)}
-          disabled={isEditing}
+          label="Selling Price"
+          type="number"
+          step="0.01"
+          min="0"
+          value={form.sellingPrice}
+          onChange={(e) => updateField("sellingPrice", e.target.value)}
+          error={errors.sellingPrice}
+          required
         />
-        <Input
-          label="Category"
-          value={form.category}
-          onChange={(e) => updateField("category", e.target.value)}
-          error={errors.category}
-        />
-        <div className="grid grid-cols-2 gap-3">
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {!isEditing && (
           <Input
-            label="Cost price"
+            label="Initial Stock"
             type="number"
             min="0"
-            step="0.01"
-            value={form.costPrice}
-            onChange={(e) => updateField("costPrice", e.target.value)}
-            error={errors.costPrice}
-          />
-          <Input
-            label="Selling price"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.sellingPrice}
-            onChange={(e) => updateField("sellingPrice", e.target.value)}
-            error={errors.sellingPrice}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Stock quantity"
-            type="number"
-            min="0"
-            step="1"
             value={form.stockQty}
             onChange={(e) => updateField("stockQty", e.target.value)}
             error={errors.stockQty}
-            disabled={isEditing}
+            required
           />
-          <Input
-            label="Low stock alert"
-            type="number"
-            min="0"
-            step="1"
-            value={form.lowStockAlert}
-            onChange={(e) => updateField("lowStockAlert", e.target.value)}
-          />
-        </div>
-        {isEditing && (
-          <p className="text-xs text-muted -mt-2">
-            Barcode and stock quantity can&apos;t be edited here — use stock adjustment for stock changes.
-          </p>
         )}
+        <Input
+          label="Low Stock Alert"
+          type="number"
+          min="0"
+          value={form.lowStockAlert}
+          onChange={(e) => updateField("lowStockAlert", e.target.value)}
+          error={errors.lowStockAlert}
+          required
+        />
+      </div>
+      <div className="flex justify-end gap-2 pt-2 border-t border-border">
+        <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
+          Cancel
+        </Button>
+        <Button type="submit" isLoading={isSubmitting}>
+          {isEditing ? "Save changes" : "Create product"}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
-        <div className="flex justify-end gap-2 mt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" isLoading={isSubmitting}>
-            {isEditing ? "Save changes" : "Add product"}
-          </Button>
-        </div>
-      </form>
+export function ProductFormModal({ open, onClose, onSaved, product }: ProductFormModalProps) {
+  if (!open) return null;
+
+  return (
+    <Modal open={open} onClose={onClose} title={product ? "Edit Product" : "Add Product"}>
+      <ProductFormContent
+        key={product?.id ?? "new"}
+        product={product}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
     </Modal>
   );
 }

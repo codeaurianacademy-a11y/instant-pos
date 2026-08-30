@@ -9,7 +9,7 @@ export interface CartLineInput {
 }
 
 export interface SaveDraftInput {
-  saleId?: string; // present when updating an existing draft
+  saleId?: string;
   customerName?: string;
   customerPhone?: string;
   items: CartLineInput[];
@@ -19,7 +19,7 @@ export interface SaveDraftInput {
 }
 
 export interface CompleteSaleInput {
-  saleId?: string; // present when completing an existing draft
+  saleId?: string;
   customerName?: string;
   customerPhone?: string;
   items: CartLineInput[];
@@ -35,18 +35,29 @@ async function resolveCustomer(
   name?: string,
   phone?: string
 ): Promise<string | null> {
-  if (!phone) return null;
+  const trimmedPhone = phone?.trim();
+  const trimmedName = name?.trim();
 
-  const trimmedPhone = phone.trim();
-  const trimmedName = name?.trim() || "Walk-in";
+  if (!trimmedPhone && !trimmedName) return null;
 
-  const customer = await tx.customer.upsert({
-    where: { phone: trimmedPhone },
-    update: { name: trimmedName },
-    create: { name: trimmedName, phone: trimmedPhone },
-  });
+  if (trimmedPhone) {
+    const customer = await tx.customer.upsert({
+      where: { phone: trimmedPhone },
+      update: trimmedName ? { name: trimmedName } : {},
+      create: { name: trimmedName || "Customer", phone: trimmedPhone },
+    });
+    return customer.id;
+  }
 
-  return customer.id;
+  if (trimmedName) {
+    const generatedPhone = `phone_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const customer = await tx.customer.create({
+      data: { name: trimmedName, phone: generatedPhone },
+    });
+    return customer.id;
+  }
+
+  return null;
 }
 
 async function computeLineItems(tx: Prisma.TransactionClient, items: CartLineInput[]) {
@@ -59,15 +70,18 @@ async function computeLineItems(tx: Prisma.TransactionClient, items: CartLineInp
   const productMap = new Map(products.map((p) => [p.id, p]));
 
   let subtotal = 0;
-  const lineItems: Prisma.SaleItemCreateManySaleInput[] = [];
+  const lineItems: {
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    lineDiscount: number;
+    lineTotal: number;
+  }[] = [];
 
   for (const item of items) {
     const product = productMap.get(item.productId);
     if (!product || !product.isActive) {
       throw new ApiError(`Product not found: ${item.productId}`, 404);
-    }
-    if (item.quantity <= 0) {
-      throw new ApiError(`Invalid quantity for ${product.name}`, 400);
     }
 
     const unitPrice = Number(product.sellingPrice);
@@ -75,9 +89,8 @@ async function computeLineItems(tx: Prisma.TransactionClient, items: CartLineInp
     const lineTotal = unitPrice * item.quantity - lineDiscount;
 
     subtotal += lineTotal;
-
     lineItems.push({
-      productId: product.id,
+      productId: item.productId,
       quantity: item.quantity,
       unitPrice,
       lineDiscount,
@@ -88,7 +101,7 @@ async function computeLineItems(tx: Prisma.TransactionClient, items: CartLineInp
   return { lineItems, subtotal, productMap };
 }
 
-export async function saveDraft(input: SaveDraftInput) {
+export async function saveDraftSale(input: SaveDraftInput) {
   return prisma.$transaction(async (tx) => {
     const { lineItems, subtotal } = await computeLineItems(tx, input.items);
     const customerId = await resolveCustomer(tx, input.customerName, input.customerPhone);
@@ -102,13 +115,12 @@ export async function saveDraft(input: SaveDraftInput) {
       if (!existing || existing.status !== "DRAFT") {
         throw new ApiError("Draft not found", 404);
       }
-
       await tx.saleItem.deleteMany({ where: { saleId: input.saleId } });
-
       return tx.sale.update({
         where: { id: input.saleId },
         data: {
           customerId,
+          cashierId: input.cashierId,
           subtotal,
           discountTotal,
           taxTotal,
@@ -134,6 +146,9 @@ export async function saveDraft(input: SaveDraftInput) {
     });
   });
 }
+
+// Export both saveDraft and saveDraftSale for API route compatibility
+export const saveDraft = saveDraftSale;
 
 export async function completeSale(input: CompleteSaleInput) {
   return prisma.$transaction(async (tx) => {
@@ -182,7 +197,6 @@ export async function completeSale(input: CompleteSaleInput) {
       sale = await tx.sale.create({
         data: {
           status: "COMPLETED",
-          type: "SALE",
           customerId,
           cashierId: input.cashierId,
           subtotal,
@@ -223,7 +237,21 @@ export async function listDrafts(cashierId?: string) {
     orderBy: { createdAt: "desc" },
     include: {
       customer: true,
-      items: { include: { product: { select: { name: true, barcode: true } } } },
+      items: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              barcode: true,
+              category: true,
+              costPrice: true,
+              sellingPrice: true,
+              stockQty: true,
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -234,7 +262,21 @@ export async function getSaleById(id: string) {
     include: {
       customer: true,
       cashier: { select: { name: true } },
-      items: { include: { product: { select: { name: true, barcode: true } } } },
+      items: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              barcode: true,
+              category: true,
+              costPrice: true,
+              sellingPrice: true,
+              stockQty: true,
+            },
+          },
+        },
+      },
       originalSale: { select: { id: true, billNumber: true } },
       exchangedInto: { select: { id: true, billNumber: true } },
     },

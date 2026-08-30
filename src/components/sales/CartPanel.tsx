@@ -34,51 +34,55 @@ export function CartPanel({ cart, onQuantityChange, onRemove }: CartPanelProps) 
             </tr>
           </TableHead>
           <TableBody>
-            {cart.map((line) => (
-              <TableRow key={line.product.id}>
-                <TableCell className="font-semibold text-foreground">{line.product.name}</TableCell>
-                <TableCell>{formatCurrency(line.product.sellingPrice)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onQuantityChange(line.product.id, line.quantity - 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-slate-50 text-slate-700 hover:bg-slate-200 font-bold text-xs cursor-pointer"
-                      aria-label={`Decrease quantity of ${line.product.name}`}
-                    >
-                      −
-                    </button>
-                    <span className="w-8 text-center font-bold text-xs">{line.quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => onQuantityChange(line.product.id, line.quantity + 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-slate-50 text-slate-700 hover:bg-slate-200 font-bold text-xs cursor-pointer"
-                      aria-label={`Increase quantity of ${line.product.name}`}
-                    >
-                      +
-                    </button>
-                  </div>
-                </TableCell>
-                <TableCell className="font-bold text-foreground">
-                  {formatCurrency(Number(line.product.sellingPrice) * line.quantity - line.lineDiscount)}
-                </TableCell>
-                <TableCell>
-                  <Button size="sm" variant="ghost" onClick={() => onRemove(line.product.id)} className="text-red-600 hover:bg-red-50">
-                    Remove
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {cart.map((line, idx) => {
+              const productId = line.product.id || `cart-item-${idx}`;
+              return (
+                <TableRow key={productId}>
+                  <TableCell className="font-semibold text-foreground">{line.product.name}</TableCell>
+                  <TableCell>{formatCurrency(line.product.sellingPrice)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onQuantityChange(line.product.id, line.quantity - 1)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-slate-50 text-slate-700 hover:bg-slate-200 font-bold text-xs cursor-pointer"
+                        aria-label={`Decrease quantity of ${line.product.name}`}
+                      >
+                        −
+                      </button>
+                      <span className="w-8 text-center font-bold text-xs">{line.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => onQuantityChange(line.product.id, line.quantity + 1)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-slate-50 text-slate-700 hover:bg-slate-200 font-bold text-xs cursor-pointer"
+                        aria-label={`Increase quantity of ${line.product.name}`}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-bold text-foreground">
+                    {formatCurrency(Number(line.product.sellingPrice) * line.quantity - line.lineDiscount)}
+                  </TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="ghost" onClick={() => onRemove(line.product.id)} className="text-red-600 hover:bg-red-50">
+                      Remove
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
 
       {/* 2. Mobile Touch Cards View (sm:hidden) */}
       <div className="sm:hidden flex flex-col gap-2.5">
-        {cart.map((line) => {
+        {cart.map((line, idx) => {
+          const productId = line.product.id || `cart-mobile-${idx}`;
           const lineTotal = Number(line.product.sellingPrice) * line.quantity - line.lineDiscount;
           return (
-            <div key={line.product.id} className="rounded-xl border border-border bg-white p-3.5 shadow-xs flex flex-col gap-2.5">
+            <div key={productId} className="rounded-xl border border-border bg-white p-3.5 shadow-xs flex flex-col gap-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-foreground leading-tight">{line.product.name}</p>

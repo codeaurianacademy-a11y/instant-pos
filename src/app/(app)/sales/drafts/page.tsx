@@ -36,40 +36,63 @@ export default async function DraftsPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {drafts.map((draft) => (
-            <Link key={draft.id} href={`/sales?draftId=${draft.id}`} className="block group">
-              <Card className="h-full group-hover:border-accent group-hover:shadow-md transition-all duration-150 shadow-xs">
-                <CardContent className="p-5 flex flex-col justify-between h-full gap-4">
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <p className="font-semibold text-foreground truncate">
-                          {draft.customer?.name ?? "Walk-in Customer"}
-                        </p>
-                        {draft.customer?.phone && (
-                          <Badge tone="neutral" className="text-[10px] shrink-0 font-mono">
-                            {draft.customer.phone}
-                          </Badge>
-                        )}
+          {drafts.map((draft) => {
+            const hasName = draft.customer?.name && draft.customer.name.trim() !== "" && draft.customer.name.trim() !== "Walk-in" && draft.customer.name.trim() !== "Customer";
+            const hasPhone = draft.customer?.phone && draft.customer.phone.trim() !== "" && !draft.customer.phone.startsWith("phone_");
+
+            const customerHeading = hasName
+              ? draft.customer!.name
+              : hasPhone
+                ? `Phone: ${draft.customer!.phone}`
+                : "Walk-in Customer";
+
+            return (
+              <Link key={draft.id} href={`/sales?draftId=${draft.id}`} className="block group">
+                <Card className="h-full group-hover:border-accent group-hover:shadow-md transition-all duration-150 shadow-xs border-border">
+                  <CardContent className="p-5 flex flex-col justify-between h-full gap-4">
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0">
+                          <p className="font-bold text-base text-foreground group-hover:text-accent transition-colors truncate">
+                            {customerHeading}
+                          </p>
+                          {hasName && hasPhone && (
+                            <span className="text-xs font-mono text-muted mt-0.5 block">
+                              Ph: {draft.customer!.phone}
+                            </span>
+                          )}
+                        </div>
+                        <Badge tone="accent">Draft</Badge>
                       </div>
-                      <Badge tone="accent">Draft</Badge>
+
+                      {/* Items count & list */}
+                      <div className="mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100 text-xs text-slate-600">
+                        <span className="font-semibold block mb-0.5 text-slate-700">
+                          {draft.items.length} item{draft.items.length !== 1 ? "s" : ""} in cart:
+                        </span>
+                        <p className="truncate text-[11px] text-muted">
+                          {draft.items.map((i) => `${i.quantity}× ${i.product.name}`).join(", ")}
+                        </p>
+                      </div>
+
+                      <p className="text-[11px] text-muted mt-2">
+                        Saved: {formatDateTime(draft.createdAt)}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted">
-                      {draft.items.length} item{draft.items.length !== 1 ? "s" : ""} in cart • Saved {formatDateTime(draft.createdAt)}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-border/80 pt-3">
-                    <span className="text-xs font-semibold text-accent group-hover:underline inline-flex items-center gap-1">
-                      Resume Order &rarr;
-                    </span>
-                    <p className="text-lg font-bold text-foreground">
-                      {formatCurrency(Number(draft.grandTotal))}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+
+                    <div className="flex items-center justify-between border-t border-border/80 pt-3 mt-1">
+                      <span className="text-xs font-bold text-accent group-hover:underline inline-flex items-center gap-1">
+                        Resume Order &rarr;
+                      </span>
+                      <p className="text-lg font-extrabold text-foreground">
+                        {formatCurrency(Number(draft.grandTotal))}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
