@@ -24,6 +24,62 @@ export function ScannerInput({ onScan, disabled }: ScannerInputProps) {
     function handleGlobalKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey || e.altKey || e.metaKey || (e.key.length > 1 && e.key !== "Enter")) return;
 
+      // If another input/textarea/select is focused (not our scanner input),
+      // don't intercept — let that field handle normal keyboard input.
+      const activeEl = document.activeElement;
+      const isOtherInputFocused =
+        activeEl &&
+        activeEl !== inputRef.current &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (isOtherInputFocused) {
+        // But if it looks like a barcode scanner burst (very fast Enter),
+        // we still want to trigger scan even if another input is focused.
+        // Only intercept the Enter key when buffer is long enough and came fast.
+        if (e.key === "Enter") {
+          const currentTime = Date.now();
+          if (buffer.length >= 3 && currentTime - lastTime < 80) {
+            e.preventDefault();
+            e.stopPropagation();
+            const code = buffer;
+            buffer = "";
+            // Clear the other input if it received scanner characters
+            if (
+              activeEl &&
+              activeEl !== inputRef.current &&
+              activeEl.tagName === "INPUT"
+            ) {
+              const inputEl = activeEl as HTMLInputElement;
+              // Remove the scanner characters that leaked into the input
+              const leaked = inputEl.value.slice(-code.length);
+              if (leaked.toUpperCase() === code.toUpperCase()) {
+                inputEl.value = inputEl.value.slice(0, -code.length);
+                // Trigger React's synthetic onChange so state syncs
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                  window.HTMLInputElement.prototype,
+                  "value"
+                )?.set;
+                nativeInputValueSetter?.call(inputEl, inputEl.value);
+                inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+              }
+            }
+            onScan(code);
+          } else {
+            buffer = "";
+          }
+        } else {
+          // Accumulate buffer even when another input is focused
+          // so we can detect the Enter at the end
+          const currentTime = Date.now();
+          buffer = currentTime - lastTime > 150 ? e.key : buffer + e.key;
+          lastTime = currentTime;
+        }
+        return;
+      }
+
       const currentTime = Date.now();
 
       if (e.key === "Enter") {
@@ -46,6 +102,7 @@ export function ScannerInput({ onScan, disabled }: ScannerInputProps) {
     window.addEventListener("keydown", handleGlobalKeyDown, true);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown, true);
   }, [onScan, disabled]);
+
 
   function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault();
