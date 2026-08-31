@@ -25,7 +25,7 @@ export const LABEL_SIZES_CONFIG: Record<LabelSize, LabelCfg> = {
   "100x44": { widthMm: 100,  heightMm: 44,   barcodeBarH: 48, shopFs: 12,  nameFs: 11,  priceFs: 10,  nameTrunc: 62 },
 };
 
-const STORE_NAME = "INSTANT POS";
+const STORE_NAME = "SK COLLECTION";
 const MM_TO_PX = 96 / 25.4;
 
 function BarcodeCanvas({

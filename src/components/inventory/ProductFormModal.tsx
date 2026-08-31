@@ -92,6 +92,7 @@ function ProductFormContent({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               name: form.name.trim(),
+              barcode: form.barcode.trim() || undefined,
               category: form.category.trim(),
               costPrice: Number(form.costPrice),
               sellingPrice: Number(form.sellingPrice),
@@ -142,9 +143,8 @@ function ProductFormContent({
       <Input
         label="Barcode"
         value={form.barcode}
-        onChange={(e) => updateField("barcode", e.target.value)}
-        placeholder={isEditing ? undefined : "Leave blank to auto-generate"}
-        disabled={isEditing}
+        onChange={(e) => updateField("barcode", e.target.value.trim().toUpperCase())}
+        placeholder={isEditing ? "Change barcode (must be unique)" : "Leave blank to auto-generate"}
         error={errors.barcode}
       />
       <Input

@@ -7,6 +7,7 @@ import { jsonObjectSchema } from "@/lib/json-schema";
 
 const updateProductSchema = z.object({
   name: z.string().trim().min(1).optional(),
+  barcode: z.string().trim().min(1).optional(),
   category: z.string().trim().min(1).optional(),
   costPrice: z.number().nonnegative().optional(),
   sellingPrice: z.number().nonnegative().optional(),

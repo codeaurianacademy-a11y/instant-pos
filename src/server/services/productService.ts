@@ -85,6 +85,7 @@ export async function createProduct(input: CreateProductInput) {
 export interface UpdateProductInput {
   id: string;
   name?: string;
+  barcode?: string;
   category?: string;
   costPrice?: number;
   sellingPrice?: number;
@@ -95,11 +96,19 @@ export interface UpdateProductInput {
 }
 
 export async function updateProduct(input: UpdateProductInput) {
-  const { id, adminId, ...fields } = input;
+  const { id, adminId, barcode, ...fields } = input;
+
+  // If barcode is being changed, check it's not already used by another product
+  if (barcode) {
+    const existing = await prisma.product.findUnique({ where: { barcode } });
+    if (existing && existing.id !== id) {
+      throw new ApiError(`Barcode "${barcode}" is already in use by another product`, 409);
+    }
+  }
 
   return prisma.product.update({
     where: { id },
-    data: { ...fields, updatedByAdminId: adminId },
+    data: { ...fields, ...(barcode ? { barcode } : {}), updatedByAdminId: adminId },
   });
 }
 

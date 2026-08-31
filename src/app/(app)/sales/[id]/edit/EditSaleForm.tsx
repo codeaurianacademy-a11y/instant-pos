@@ -263,13 +263,14 @@ export function EditSaleForm({
             <Select
               label="Payment Method"
               value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-            >
-              <option value="CASH">Cash</option>
-              <option value="UPI">UPI</option>
-              <option value="CARD">Card</option>
-              <option value="OTHER">Other</option>
-            </Select>
+              onChange={(val) => setPaymentMethod(val as any)}
+              options={[
+                { label: "Cash", value: "CASH" },
+                { label: "UPI", value: "UPI" },
+                { label: "Card", value: "CARD" },
+                { label: "Other", value: "OTHER" },
+              ]}
+            />
             <Input
               label="Overall Bill Discount (₹)"
               type="text"

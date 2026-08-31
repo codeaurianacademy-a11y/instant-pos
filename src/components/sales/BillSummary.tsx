@@ -132,13 +132,14 @@ export function BillSummary({
           <Select
             label="Payment Method"
             value={paymentMethod}
-            onChange={(e) => onPaymentMethodChange(e.target.value as PaymentMethod)}
-          >
-            <option value="CASH">Cash</option>
-            <option value="UPI">UPI / QR</option>
-            <option value="CARD">Debit / Credit Card</option>
-            <option value="OTHER">Other</option>
-          </Select>
+            onChange={(val) => onPaymentMethodChange(val as PaymentMethod)}
+            options={[
+              { label: "Cash", value: "CASH" },
+              { label: "Card", value: "CARD" },
+              { label: "UPI", value: "UPI" },
+              { label: "Other", value: "OTHER" },
+            ]}
+          />
           <Input
             label="Amount Paid (₹)"
             type="text"

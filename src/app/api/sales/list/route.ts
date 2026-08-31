@@ -6,7 +6,7 @@ import type { Prisma } from "@/generated/prisma/client";
 
 export async function GET(request: Request) {
   try {
-    await requireSession();
+    const session = await requireSession();
     const { searchParams } = new URL(request.url);
 
     const search = searchParams.get("search")?.trim() || "";
@@ -17,11 +17,14 @@ export async function GET(request: Request) {
 
     const where: Prisma.SaleWhereInput = {};
 
+    // If user is a Cashier/Salesman, only show transactions they created
+    if (session.role !== "ADMIN") {
+      where.cashierId = session.sub;
+    }
+
     // Status filter
     if (status && status !== "ALL") {
       where.status = status as Prisma.EnumSaleStatusFilter["equals"];
-    } else {
-      where.status = { in: ["COMPLETED", "VOIDED"] };
     }
 
     // Type filter
@@ -31,12 +34,12 @@ export async function GET(request: Request) {
 
     // Date range filter
     if (from || to) {
-      where.completedAt = {};
+      where.createdAt = {};
       if (from) {
-        where.completedAt.gte = new Date(`${from}T00:00:00.000Z`);
+        where.createdAt.gte = new Date(`${from}T00:00:00.000Z`);
       }
       if (to) {
-        where.completedAt.lte = new Date(`${to}T23:59:59.999Z`);
+        where.createdAt.lte = new Date(`${to}T23:59:59.999Z`);
       }
     }
 
@@ -60,7 +63,7 @@ export async function GET(request: Request) {
 
     const sales = await prisma.sale.findMany({
       where,
-      orderBy: { completedAt: "desc" },
+      orderBy: { createdAt: "desc" },
       include: {
         customer: true,
         cashier: { select: { name: true, username: true } },
@@ -108,6 +111,7 @@ export async function GET(request: Request) {
             phone: sale.customer.phone.startsWith("phone_") ? null : sale.customer.phone,
           }
         : null,
+      cashierId: sale.cashierId,
       cashier: sale.cashier,
       items: sale.items.map((item) => ({
         id: item.id,

@@ -28,6 +28,7 @@ interface EditHistorySnapshot {
 
 interface BillViewProps {
   isAdmin?: boolean;
+  currentUserId?: string;
   sale: {
     id: string;
     billNumber: string;
@@ -44,6 +45,7 @@ interface BillViewProps {
     isEdited?: boolean;
     editHistory?: unknown;
     customer: { name: string; phone: string } | null;
+    cashierId?: string;
     cashier: { name: string };
     items: {
       id: string;
@@ -58,10 +60,13 @@ interface BillViewProps {
   };
 }
 
-export function BillView({ sale, isAdmin }: BillViewProps) {
+export function BillView({ sale, isAdmin, currentUserId }: BillViewProps) {
   const [showHistory, setShowHistory] = useState(false);
-  const canExchange = sale.status === "COMPLETED" && !sale.exchangedInto;
-  const canEdit = sale.status === "COMPLETED" && !sale.exchangedInto;
+  const isOwner = Boolean(currentUserId && sale.cashierId && currentUserId === sale.cashierId);
+  const isAuthorized = Boolean(isAdmin || isOwner);
+
+  const canExchange = sale.status === "COMPLETED" && !sale.exchangedInto && isAuthorized;
+  const canEdit = sale.status === "COMPLETED" && !sale.exchangedInto && isAuthorized;
 
   function handlePrint() {
     window.print();
@@ -80,7 +85,7 @@ export function BillView({ sale, isAdmin }: BillViewProps) {
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white font-bold mb-2 shadow-xs">
             POS
           </div>
-          <h2 className="text-xl font-bold text-foreground tracking-tight">Instant POS</h2>
+          <h2 className="text-xl font-bold text-foreground tracking-tight">SK Collection</h2>
           <p className="text-xs font-mono text-muted mt-0.5">{shortBillNo}</p>
           
           <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">

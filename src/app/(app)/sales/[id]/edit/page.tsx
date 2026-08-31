@@ -5,7 +5,7 @@ import { ApiError } from "@/lib/api-error";
 import { EditSaleForm } from "./EditSaleForm";
 
 export default async function EditSalePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireSession();
+  const session = await requireSession();
   const { id } = await params;
 
   let sale;
@@ -19,6 +19,10 @@ export default async function EditSalePage({ params }: { params: Promise<{ id: s
   }
 
   if (sale.status !== "COMPLETED") {
+    notFound();
+  }
+
+  if (session.role !== "ADMIN" && sale.cashierId !== session.sub) {
     notFound();
   }
 

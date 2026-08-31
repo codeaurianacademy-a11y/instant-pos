@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
+import { useToast } from "@/components/ui/Toast";
+import { Select } from "@/components/ui/Select";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 
 interface TransactionItem {
@@ -51,6 +54,7 @@ interface TransactionSale {
   isEdited?: boolean;
   editHistory?: unknown;
   customer: { name: string; phone: string | null } | null;
+  cashierId?: string;
   cashier: { name: string; username: string };
   items: TransactionItem[];
   originalSale: { id: string; billNumber: string } | null;
@@ -86,9 +90,36 @@ export default function TransactionsPage() {
   const PAGE_SIZE = 10;
   const [currentPage, setCurrentPage] = useState(1);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Expanded edit audit histories
   const [expandedEdits, setExpandedEdits] = useState<Record<string, boolean>>({});
+
+  // Delete state
+  const [saleToDelete, setSaleToDelete] = useState<TransactionSale | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const { showToast } = useToast();
+
+  async function executeDeleteSale() {
+    if (!saleToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/sales/${saleToDelete.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error ?? "Failed to delete transaction", "danger");
+        return;
+      }
+      showToast(`Bill #${saleToDelete.billNumber.slice(-8).toUpperCase()} deleted`, "success");
+      setSaleToDelete(null);
+      fetchSales();
+    } catch {
+      showToast("Something went wrong", "danger");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   function toggleEditHistory(id: string) {
     setExpandedEdits((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -101,6 +132,7 @@ export default function TransactionsPage() {
         if (res.ok) {
           const data = await res.json();
           setUserRole(data.user?.role ?? null);
+          setCurrentUserId(data.user?.id ?? null);
         }
       } catch {
         // ignore
@@ -131,6 +163,7 @@ export default function TransactionsPage() {
   }, [search, fromDate, toDate, typeFilter, statusFilter]);
 
   // Reset to page 1 whenever filters change
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setCurrentPage(1); }, [search, fromDate, toDate, typeFilter, statusFilter]);
 
   useEffect(() => {
@@ -337,28 +370,31 @@ export default function TransactionsPage() {
 
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1">Sale Type</label>
-            <select
+            <Select
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full h-9 px-2.5 rounded-lg border border-border bg-white text-xs font-medium text-foreground focus:ring-1 focus:ring-accent outline-none"
-            >
-              <option value="ALL">All Types (Sales & Exchanges)</option>
-              <option value="SALE">Regular Sales Only</option>
-              <option value="EXCHANGE">Exchange Invoices Only</option>
-            </select>
+              onChange={setTypeFilter}
+              className="h-9"
+              options={[
+                { label: "All Types (Sales & Exchanges)", value: "ALL" },
+                { label: "Regular Sales Only", value: "SALE" },
+                { label: "Exchange Invoices Only", value: "EXCHANGE" },
+              ]}
+            />
           </div>
 
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted block mb-1">Status</label>
-            <select
+            <Select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full h-9 px-2.5 rounded-lg border border-border bg-white text-xs font-medium text-foreground focus:ring-1 focus:ring-accent outline-none"
-            >
-              <option value="ALL">Completed & Active</option>
-              <option value="COMPLETED">Completed Only</option>
-              <option value="VOIDED">Voided / Cancelled</option>
-            </select>
+              onChange={setStatusFilter}
+              className="h-9"
+              options={[
+                { label: "All Statuses", value: "ALL" },
+                { label: "Completed Only", value: "COMPLETED" },
+                { label: "Drafts", value: "DRAFT" },
+                { label: "Voided / Cancelled", value: "VOIDED" },
+              ]}
+            />
           </div>
         </div>
       </div>
@@ -406,8 +442,14 @@ export default function TransactionsPage() {
                   ? `Bill #${sale.billNumber.slice(-8).toUpperCase()}`
                   : `Bill #${sale.billNumber}`;
 
-                const canExchange = sale.status === "COMPLETED" && !sale.exchangedInto;
-                const canEdit = sale.status === "COMPLETED" && !sale.exchangedInto;
+                const canExchange =
+                  sale.status === "COMPLETED" &&
+                  !sale.exchangedInto &&
+                  (userRole === "ADMIN" || !sale.cashierId || sale.cashierId === currentUserId);
+                const canEdit =
+                  sale.status === "COMPLETED" &&
+                  !sale.exchangedInto &&
+                  (userRole === "ADMIN" || !sale.cashierId || sale.cashierId === currentUserId);
                 const historyList = (Array.isArray(sale.editHistory) ? sale.editHistory : []) as EditHistorySnapshot[];
                 const isExpanded = !!expandedEdits[sale.id];
 
@@ -523,9 +565,25 @@ export default function TransactionsPage() {
                               Already Returned
                             </span>
                           ) : null}
+
+                          {/* Admin: Delete Transaction */}
+                          {userRole === "ADMIN" && (
+                            <button
+                              type="button"
+                              onClick={() => setSaleToDelete(sale)}
+                              className="px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                              title="Delete transaction permanently"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                              </svg>
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
+
 
                     {/* Items preview */}
                     <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-xs text-slate-700 flex flex-col gap-1">
@@ -674,6 +732,22 @@ export default function TransactionsPage() {
           </div>
         );
       })()}
+
+      {/* Admin Delete Transaction Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!saleToDelete}
+        title="Delete Transaction Permanently?"
+        description="This transaction will be permanently deleted. If the sale was completed, stock will be restored for all items. This action cannot be undone."
+        itemLabel={
+          saleToDelete
+            ? `Bill #${saleToDelete.billNumber.slice(-8).toUpperCase()} — ${saleToDelete.customer?.name ?? "Walk-in"} — ${formatCurrency(saleToDelete.grandTotal)}`
+            : undefined
+        }
+        confirmLabel="Yes, Delete Transaction"
+        onConfirm={executeDeleteSale}
+        onCancel={() => setSaleToDelete(null)}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

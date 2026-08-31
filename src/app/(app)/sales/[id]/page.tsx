@@ -22,6 +22,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     <div className="p-6 lg:p-8 max-w-7xl mx-auto w-full flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
       <BillView
         isAdmin={session?.role === "ADMIN"}
+        currentUserId={session?.sub}
         sale={{
           id: sale.id,
           billNumber: sale.billNumber,
@@ -38,6 +39,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
           isEdited: sale.isEdited,
           editHistory: sale.editHistory,
           customer: sale.customer ? { name: sale.customer.name, phone: sale.customer.phone } : null,
+          cashierId: sale.cashierId,
           cashier: sale.cashier,
           items: sale.items.map((item) => ({
             id: item.id,

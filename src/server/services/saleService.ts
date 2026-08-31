@@ -339,6 +339,7 @@ export interface EditSaleInput {
   amountPaid?: number;
   adminId: string;
   adminName: string;
+  userRole?: string;
 }
 
 export async function editSale(input: EditSaleInput) {
@@ -371,6 +372,11 @@ export async function editSale(input: EditSaleInput) {
 
     if (existing.exchangedInto) {
       throw new ApiError("Cannot edit a sale that has already been returned or exchanged", 400);
+    }
+
+    // Cashier can only edit their own transactions; Admin can edit any transaction
+    if (input.userRole && input.userRole !== "ADMIN" && existing.cashierId !== input.adminId) {
+      throw new ApiError("You can only edit transactions created by you", 403);
     }
 
     // 1. Snapshot previous state
@@ -493,3 +499,34 @@ export async function editSale(input: EditSaleInput) {
   });
 }
 
+// Permanently delete a sale (admin only).
+// If sale was COMPLETED, stock is restored first.
+export async function deleteSale(id: string) {
+  return prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!sale) {
+      throw new ApiError("Sale not found", 404);
+    }
+
+    // Restore stock for completed sales
+    if (sale.status === "COMPLETED") {
+      for (const item of sale.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQty: { increment: item.quantity } },
+        });
+      }
+    }
+
+    // Delete stock movements linked to this sale
+    await tx.stockMovement.deleteMany({ where: { saleId: id } });
+    // SaleItems cascade-delete via schema onDelete: Cascade
+    await tx.sale.delete({ where: { id } });
+
+    return { id };
+  });
+}

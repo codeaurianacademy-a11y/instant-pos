@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { JWT_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
-const ADMIN_ONLY_PREFIXES = ["/dashboard", "/inventory", "/reports", "/barcodes"];
+const ADMIN_ONLY_PREFIXES = ["/dashboard", "/inventory", "/reports", "/barcodes", "/staff"];
 const PUBLIC_PATHS = ["/login"];
 
 export async function proxy(request: NextRequest) {

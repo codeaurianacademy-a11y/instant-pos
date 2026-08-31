@@ -207,13 +207,14 @@ export function ExchangeForm({ originalSaleId, originalBillNumber, returnableIte
             <Select
               label="Payment method"
               value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-            >
-              <option value="CASH">Cash</option>
-              <option value="CARD">Card</option>
-              <option value="UPI">UPI</option>
-              <option value="OTHER">Other</option>
-            </Select>
+              onChange={(val) => setPaymentMethod(val as PaymentMethod)}
+              options={[
+                { label: "Cash", value: "CASH" },
+                { label: "Card", value: "CARD" },
+                { label: "UPI", value: "UPI" },
+                { label: "Other", value: "OTHER" },
+              ]}
+            />
           )}
 
           <Button size="lg" onClick={handleSubmit} isLoading={isSubmitting}>

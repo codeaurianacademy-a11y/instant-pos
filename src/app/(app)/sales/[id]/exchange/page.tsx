@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { getSaleById } from "@/server/services/saleService";
+import { requireSession } from "@/lib/session";
 import { ApiError } from "@/lib/api-error";
 import { ExchangeForm } from "./ExchangeForm";
 
 export default async function ExchangePage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await requireSession();
   const { id } = await params;
 
   let sale;
@@ -17,6 +19,10 @@ export default async function ExchangePage({ params }: { params: Promise<{ id: s
   }
 
   if (sale.status !== "COMPLETED" || sale.exchangedInto) {
+    notFound();
+  }
+
+  if (session.role !== "ADMIN" && sale.cashierId !== session.sub) {
     notFound();
   }
 

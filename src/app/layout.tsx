@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Instant POS",
+  title: "SK Collection",
   description: "Point of sale, inventory and billing",
 };
 

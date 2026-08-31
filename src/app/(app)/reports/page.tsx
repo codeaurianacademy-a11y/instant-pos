@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatCurrency } from "@/lib/format";
 
+import { Select } from "@/components/ui/Select";
+
 type DatePreset = "ALL" | "TODAY" | "YESTERDAY" | "LAST_7" | "THIS_MONTH" | "CUSTOM";
 
 interface FinancialMetrics {
@@ -195,40 +197,30 @@ export default function ReportsPage() {
 
       {/* 2. Interactive Date Filter Toolbar */}
       <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Preset Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Period:</span>
-          {(
-            [
-              { key: "TODAY", label: "Today" },
-              { key: "YESTERDAY", label: "Yesterday" },
-              { key: "LAST_7", label: "Last 7 Days" },
-              { key: "THIS_MONTH", label: "This Month" },
-              { key: "ALL", label: "All Time" },
-            ] as const
-          ).map((item) => {
-            const isSelected = preset === item.key;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => applyPreset(item.key)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  isSelected
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "bg-slate-100/80 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+        {/* Preset Dropdown */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Period:</span>
+          <div className="w-44">
+            <Select
+              value={preset}
+              onChange={(val) => applyPreset(val as DatePreset)}
+              className="h-9 shadow-none border-slate-200/80"
+              options={[
+                { label: "Today", value: "TODAY" },
+                { label: "Yesterday", value: "YESTERDAY" },
+                { label: "Last 7 Days", value: "LAST_7" },
+                { label: "This Month", value: "THIS_MONTH" },
+                { label: "All Time", value: "ALL" },
+                { label: "Custom Range", value: "CUSTOM" },
+              ]}
+            />
+          </div>
         </div>
 
         {/* Date Inputs */}
-        <div className="flex items-center gap-2 flex-wrap bg-slate-50 p-1.5 rounded-xl border border-slate-200/80">
-          <div className="flex items-center gap-1.5 text-xs px-2">
-            <span className="text-slate-400 font-semibold">From:</span>
+        <div className="flex items-center gap-3 flex-wrap bg-slate-50/50 p-2 rounded-xl border border-slate-200/80 shadow-inner overflow-hidden">
+          <div className="flex items-center gap-2 text-xs px-1">
+            <span className="text-slate-500 font-semibold uppercase tracking-wider text-[10px]">From</span>
             <input
               type="date"
               value={from}
@@ -236,12 +228,12 @@ export default function ReportsPage() {
                 setPreset("CUSTOM");
                 setFrom(e.target.value);
               }}
-              className="h-7 px-2 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-900"
+              className="h-8 px-2.5 rounded-md border border-slate-200 bg-white text-xs font-bold text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all cursor-pointer hover:border-slate-300"
             />
           </div>
-          <div className="h-4 w-px bg-slate-300 hidden sm:block"></div>
-          <div className="flex items-center gap-1.5 text-xs px-2">
-            <span className="text-slate-400 font-semibold">To:</span>
+          <div className="h-4 w-px bg-slate-300/80 hidden sm:block"></div>
+          <div className="flex items-center gap-2 text-xs px-1">
+            <span className="text-slate-500 font-semibold uppercase tracking-wider text-[10px]">To</span>
             <input
               type="date"
               value={to}
@@ -249,7 +241,7 @@ export default function ReportsPage() {
                 setPreset("CUSTOM");
                 setTo(e.target.value);
               }}
-              className="h-7 px-2 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-900"
+              className="h-8 px-2.5 rounded-md border border-slate-200 bg-white text-xs font-bold text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all cursor-pointer hover:border-slate-300"
             />
           </div>
           <button
@@ -294,29 +286,29 @@ export default function ReportsPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               {/* Total Stock in Store */}
-              <div className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs hover:border-blue-300 hover:shadow-md transition-all">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <div className="group rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-slate-500">
                     Total In-Stock Items
                   </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:scale-105 transition-transform">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:scale-105 transition-transform shrink-0">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                     </svg>
                   </div>
                 </div>
-                <div className="mt-3 flex items-baseline gap-1.5">
-                  <span className="text-3xl font-black text-slate-900 tracking-tight">
+                <div className="mt-2 flex items-baseline gap-1.5">
+                  <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                     {inv?.totalStockUnits.toLocaleString()}
                   </span>
-                  <span className="text-sm font-bold text-slate-400">units</span>
+                  <span className="text-xs font-semibold text-slate-400">units</span>
                 </div>
-                <div className="mt-3 flex items-center justify-between text-xs text-slate-500 pt-2.5 border-t border-slate-100">
+                <div className="mt-3 flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-100/80">
                   <span>Across <strong>{inv?.totalProducts}</strong> products</span>
                   {inv && inv.lowStockCount > 0 && (
-                    <span className="font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                    <span className="font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
                       {inv.lowStockCount} low
                     </span>
                   )}
@@ -324,69 +316,69 @@ export default function ReportsPage() {
               </div>
 
               {/* Stock Purchase Value (Cost Capital) */}
-              <div className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs hover:border-slate-300 hover:shadow-md transition-all">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Purchase Cost Value (CP)
+              <div className="group rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-slate-500">
+                    Purchase Cost (CP)
                   </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:scale-105 transition-transform">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-600 group-hover:scale-105 transition-transform shrink-0">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
                 </div>
-                <div className="mt-3">
-                  <span className="text-3xl font-black text-slate-900 tracking-tight">
+                <div className="mt-2">
+                  <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                     {formatCurrency(inv?.totalStockCostValue ?? 0)}
                   </span>
                 </div>
-                <p className="mt-3 text-xs text-slate-400 pt-2.5 border-t border-slate-100 truncate">
-                  Total purchase capital invested in stock
+                <p className="mt-3 text-[11px] text-slate-400 pt-3 border-t border-slate-100/80 truncate">
+                  Total capital invested in stock
                 </p>
               </div>
 
               {/* Stock Retail Value (MRP Turnover) */}
-              <div className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Retail Selling Value (MRP)
+              <div className="group rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs hover:border-indigo-300 hover:shadow-sm transition-all flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-slate-500">
+                    Retail Value (MRP)
                   </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 group-hover:scale-105 transition-transform">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:scale-105 transition-transform shrink-0">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
                   </div>
                 </div>
-                <div className="mt-3">
-                  <span className="text-3xl font-black text-slate-900 tracking-tight">
+                <div className="mt-2">
+                  <span className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                     {formatCurrency(inv?.totalStockRetailValue ?? 0)}
                   </span>
                 </div>
-                <p className="mt-3 text-xs text-slate-400 pt-2.5 border-t border-slate-100 truncate">
-                  Estimated collection if all stock sold
+                <p className="mt-3 text-[11px] text-slate-400 pt-3 border-t border-slate-100/80 truncate">
+                  Estimated collection if all sold
                 </p>
               </div>
 
-              {/* Potential Inventory Profit (Hero Card) */}
-              <div className="group rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white p-5 shadow-xs hover:shadow-md hover:border-emerald-500/50 transition-all relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
-                    Potential Stock Profit
+              {/* Potential Inventory Profit */}
+              <div className="group rounded-xl border border-emerald-200/80 bg-emerald-50/20 p-4 sm:p-5 shadow-xs hover:border-emerald-300 hover:shadow-sm transition-all flex flex-col justify-between relative overflow-hidden">
+                <div className="flex items-center justify-between gap-2 relative z-10">
+                  <span className="text-sm font-semibold text-emerald-800">
+                    Stock Potential Profit
                   </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs group-hover:scale-105 transition-transform">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100/60 text-emerald-700 group-hover:scale-105 transition-transform shrink-0">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
                   </div>
                 </div>
-                <div className="mt-3">
-                  <span className="text-3xl font-black text-emerald-700 tracking-tight">
+                <div className="mt-2 relative z-10">
+                  <span className="text-xl sm:text-2xl font-bold text-emerald-700 tracking-tight">
                     {formatCurrency(inv?.potentialInventoryProfit ?? 0)}
                   </span>
                 </div>
-                <div className="mt-3 flex items-center justify-between pt-2.5 border-t border-emerald-200/50 text-xs font-bold text-emerald-800">
+                <div className="mt-3 flex items-center justify-between text-[11px] font-semibold text-emerald-700/80 pt-3 border-t border-emerald-200/40 relative z-10">
                   <span>Gross Margin Potential</span>
-                  <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-full text-[11px] shadow-2xs">
+                  <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded shadow-2xs">
                     {inv?.potentialInventoryMargin.toFixed(1)}%
                   </span>
                 </div>
@@ -414,97 +406,97 @@ export default function ReportsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
               {/* Signature Hero Net Realized Profit Card */}
-              <div className="rounded-2xl border-2 border-emerald-500 bg-white p-5 shadow-xs relative overflow-hidden flex flex-col justify-between">
-                <div className="absolute top-0 right-0 h-20 w-20 bg-emerald-500/10 rounded-bl-full pointer-events-none" />
+              <div className="rounded-xl border border-emerald-400 bg-emerald-50/10 p-4 sm:p-5 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                <div className="absolute top-0 right-0 h-16 w-16 bg-emerald-500/10 rounded-bl-full pointer-events-none" />
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-wider">
+                  <div className="flex items-center justify-between relative z-10 gap-2">
+                    <span className="text-sm font-semibold text-emerald-800">
                       Net Realized Profit
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 shrink-0 shadow-2xs">
                       {fin?.profitMargin.toFixed(1)}% Margin
                     </span>
                   </div>
-                  <div className="mt-2.5">
-                    <p className="text-3xl sm:text-4xl font-black text-emerald-600 tracking-tight">
+                  <div className="mt-2 relative z-10">
+                    <p className="text-xl sm:text-2xl font-bold text-emerald-700 tracking-tight">
                       {formatCurrency(fin?.netProfit ?? 0)}
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-3 pt-3 border-t border-emerald-200/40 flex items-center justify-between text-[11px] font-semibold text-emerald-700/80 relative z-10">
                   <span>Cost: <strong>{formatCurrency(fin?.totalCost ?? 0)}</strong></span>
                   <span>Sales: <strong>{formatCurrency(fin?.totalRevenue ?? 0)}</strong></span>
                 </div>
               </div>
 
               {/* Net In-Hand Revenue */}
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-500">
                       Net In-Hand Revenue
                     </span>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                      <span className="font-bold text-sm">₹</span>
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shrink-0">
+                      <span className="font-bold text-[13px]">₹</span>
                     </div>
                   </div>
-                  <div className="mt-2.5">
-                    <p className="text-3xl font-black text-slate-900 tracking-tight">
+                  <div className="mt-2">
+                    <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                       {formatCurrency(fin?.totalRevenue ?? 0)}
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400">
+                <div className="mt-3 pt-3 border-t border-slate-100/80 text-[11px] text-slate-400">
                   Actual money received after returns
                 </div>
               </div>
 
               {/* Discounts Given */}
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Discounts Concessions
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-500">
+                      Discounts Given
                     </span>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600 shrink-0">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                       </svg>
                     </div>
                   </div>
-                  <div className="mt-2.5">
-                    <p className="text-3xl font-black text-amber-600 tracking-tight">
+                  <div className="mt-2">
+                    <p className="text-xl sm:text-2xl font-bold text-amber-600 tracking-tight">
                       {formatCurrency(fin?.totalDiscounts ?? 0)}
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400">
-                  Total price discounts given to shoppers
+                <div className="mt-3 pt-3 border-t border-slate-100/80 text-[11px] text-slate-400">
+                  Total concessions given to shoppers
                 </div>
               </div>
 
               {/* Orders & Returns Count */}
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-500">
                       Orders & Invoices
                     </span>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-50 text-purple-600 shrink-0">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                       </svg>
                     </div>
                   </div>
-                  <div className="mt-2.5 flex items-baseline gap-1">
-                    <p className="text-3xl font-black text-slate-900 tracking-tight">
+                  <div className="mt-2 flex items-baseline gap-1">
+                    <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                       {fin?.totalBills}
                     </p>
-                    <span className="text-sm font-bold text-slate-400">bills</span>
+                    <span className="text-xs font-semibold text-slate-400">bills</span>
                   </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                  <span><strong>{fin?.regularSalesCount}</strong> Regular Sales</span>
+                <div className="mt-3 pt-3 border-t border-slate-100/80 flex items-center justify-between text-[11px] text-slate-500">
+                  <span><strong>{fin?.regularSalesCount}</strong> Regular</span>
                   <span><strong>{fin?.exchangeCount}</strong> Exchanges</span>
                 </div>
               </div>

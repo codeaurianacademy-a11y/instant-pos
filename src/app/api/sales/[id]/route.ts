@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireSession, requireAdmin } from "@/lib/session";
 import { handleApiError } from "@/lib/api-error";
-import { getSaleById, voidSale, editSale } from "@/server/services/saleService";
+import { getSaleById, voidSale, editSale, deleteSale } from "@/server/services/saleService";
 
 const cartLineSchema = z.object({
   productId: z.string().min(1),
@@ -44,6 +44,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       ...data,
       adminId: session.sub,
       adminName: session.name,
+      userRole: session.role,
     });
 
     return NextResponse.json({ sale });
@@ -58,8 +59,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     await requireAdmin();
     const { id } = await params;
 
-    const sale = await voidSale(id);
-    return NextResponse.json({ sale });
+    const result = await deleteSale(id);
+    return NextResponse.json({ deleted: true, id: result.id });
   } catch (error) {
     return handleApiError(error);
   }
