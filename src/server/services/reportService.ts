@@ -136,8 +136,16 @@ export async function getFinancialAndInventoryReport(filter: ReportFilter = {}) 
   >();
 
   for (const sale of sales) {
+    // Only include regular SALE bills in product breakdown.
+    // EXCHANGE bills are complex (items go both in AND out); their net financial
+    // effect is captured in top-level revenue/cost via stockMovements.
+    // Including exchange items here inflates unitsSold and double-counts revenue.
+    if (sale.type !== "SALE") continue;
+
     const subtotal = Number(sale.subtotal);
     const grandTotal = Number(sale.grandTotal);
+    // Proportion of subtotal that was actually collected (after discounts).
+    // Guard: if subtotal is somehow 0, fallback to 1 (no discount scaling).
     const discountRatio = subtotal > 0 ? grandTotal / subtotal : 1;
 
     for (const item of sale.items) {
@@ -146,6 +154,7 @@ export async function getFinancialAndInventoryReport(filter: ReportFilter = {}) 
 
       const qty = item.quantity;
       const unitCost = Number(p.costPrice);
+      // Effective revenue = item's billed amount, scaled by discount ratio
       const effectiveLineRev = Number(item.lineTotal) * discountRatio;
       const lineCost = qty * unitCost;
       const lineProfit = effectiveLineRev - lineCost;
@@ -232,20 +241,27 @@ export async function getFinancialAndInventoryReport(filter: ReportFilter = {}) 
   let lowStockCount = 0;
   let outOfStockCount = 0;
 
+  // Count of products actually in stock (qty > 0) vs all active products
+  let productsInStockCount = 0;
+
   for (const p of allProducts) {
     const qty = p.stockQty;
     const cost = Number(p.costPrice);
     const price = Number(p.sellingPrice);
 
-    totalStockUnits += qty;
-    totalStockCostValue += qty * cost;
-    totalStockRetailValue += qty * price;
-
     if (qty <= 0) {
+      // Out of stock (or negative due to oversell) — excluded from valuation
       outOfStockCount++;
-    } else if (qty <= p.lowStockAlert) {
-      // Only low stock if still has some stock (mutually exclusive with out-of-stock)
-      lowStockCount++;
+    } else {
+      // Only in-stock products count toward Purchase Cost and Retail Value
+      productsInStockCount++;
+      totalStockUnits += qty;
+      totalStockCostValue += qty * cost;
+      totalStockRetailValue += qty * price;
+
+      if (qty <= p.lowStockAlert) {
+        lowStockCount++;
+      }
     }
   }
 
@@ -265,7 +281,8 @@ export async function getFinancialAndInventoryReport(filter: ReportFilter = {}) 
       exchangeCount,
     },
     inventoryValuation: {
-      totalProducts: allProducts.length,
+      totalProducts: productsInStockCount,   // only products with qty > 0
+      totalAllActiveProducts: allProducts.length, // total catalog size
       totalStockUnits,
       totalStockCostValue,
       totalStockRetailValue,

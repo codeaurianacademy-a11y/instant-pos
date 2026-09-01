@@ -20,7 +20,8 @@ interface FinancialMetrics {
 }
 
 interface InventoryValuation {
-  totalProducts: number;
+  totalProducts: number;           // products with qty > 0 (in stock)
+  totalAllActiveProducts: number;  // total active catalog size
   totalStockUnits: number;
   totalStockCostValue: number;
   totalStockRetailValue: number;
@@ -306,10 +307,15 @@ export default function ReportsPage() {
                   <span className="text-xs font-semibold text-slate-400">units</span>
                 </div>
                 <div className="mt-3 flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-100/80">
-                  <span>Across <strong>{inv?.totalProducts}</strong> products</span>
+                  <span>In stock: <strong>{inv?.totalProducts}</strong> of <strong>{inv?.totalAllActiveProducts}</strong> products</span>
                   {inv && inv.lowStockCount > 0 && (
                     <span className="font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
                       {inv.lowStockCount} low
+                    </span>
+                  )}
+                  {inv && inv.outOfStockCount > 0 && (
+                    <span className="font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded ml-1">
+                      {inv.outOfStockCount} out
                     </span>
                   )}
                 </div>
