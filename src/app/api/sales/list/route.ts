@@ -32,14 +32,16 @@ export async function GET(request: Request) {
       where.type = type as Prisma.EnumSaleTypeFilter["equals"];
     }
 
-    // Date range filter
+    // Date range filter (filter by completedAt, consistent with reports)
     if (from || to) {
-      where.createdAt = {};
+      where.completedAt = {};
       if (from) {
-        where.createdAt.gte = new Date(`${from}T00:00:00.000Z`);
+        const [y, m, d] = from.split("-").map(Number);
+        where.completedAt.gte = new Date(y, m - 1, d, 0, 0, 0, 0);
       }
       if (to) {
-        where.createdAt.lte = new Date(`${to}T23:59:59.999Z`);
+        const [y, m, d] = to.split("-").map(Number);
+        where.completedAt.lte = new Date(y, m - 1, d, 23, 59, 59, 999);
       }
     }
 

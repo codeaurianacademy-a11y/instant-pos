@@ -16,8 +16,16 @@ export async function getFinancialAndInventoryReport(filter: ReportFilter = {}) 
 
   if (from || to) {
     where.completedAt = {};
-    if (from) where.completedAt.gte = new Date(`${from}T00:00:00.000Z`);
-    if (to) where.completedAt.lte = new Date(`${to}T23:59:59.999Z`);
+    // Parse dates in local timezone (not UTC) so e.g. "2026-09-01" means
+    // midnight IST (18:30 UTC on Aug 31), not midnight UTC.
+    if (from) {
+      const [y, m, d] = from.split("-").map(Number);
+      where.completedAt.gte = new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+    if (to) {
+      const [y, m, d] = to.split("-").map(Number);
+      where.completedAt.lte = new Date(y, m - 1, d, 23, 59, 59, 999);
+    }
   }
 
   const sales = await prisma.sale.findMany({
@@ -76,7 +84,10 @@ export async function getFinancialAndInventoryReport(filter: ReportFilter = {}) 
         const unitCost = Number(mov.product?.costPrice ?? 0);
         totalCost += -mov.quantity * unitCost;
       }
-    } else if (sale.items && sale.items.length > 0) {
+    } else {
+      // Fallback when stockMovements not recorded.
+      // For SALE: all items went out → add cost.
+      // For EXCHANGE: items in this bill are the NEW items given out → add cost.
       for (const item of sale.items) {
         const unitCost = Number(item.product?.costPrice ?? 0);
         totalCost += item.quantity * unitCost;
@@ -230,8 +241,12 @@ export async function getFinancialAndInventoryReport(filter: ReportFilter = {}) 
     totalStockCostValue += qty * cost;
     totalStockRetailValue += qty * price;
 
-    if (qty <= 0) outOfStockCount++;
-    else if (qty <= p.lowStockAlert) lowStockCount++;
+    if (qty <= 0) {
+      outOfStockCount++;
+    } else if (qty <= p.lowStockAlert) {
+      // Only low stock if still has some stock (mutually exclusive with out-of-stock)
+      lowStockCount++;
+    }
   }
 
   const potentialInventoryProfit = totalStockRetailValue - totalStockCostValue;

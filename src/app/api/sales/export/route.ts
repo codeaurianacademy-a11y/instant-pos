@@ -21,8 +21,14 @@ export async function GET(request: Request) {
     });
 
     const completedAtFilter: Prisma.DateTimeFilter = {};
-    if (from) completedAtFilter.gte = new Date(`${from}T00:00:00.000Z`);
-    if (to) completedAtFilter.lte = new Date(`${to}T23:59:59.999Z`);
+    if (from) {
+      const [y, m, d] = from.split("-").map(Number);
+      completedAtFilter.gte = new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+    if (to) {
+      const [y, m, d] = to.split("-").map(Number);
+      completedAtFilter.lte = new Date(y, m - 1, d, 23, 59, 59, 999);
+    }
 
     if (from && to && new Date(from) > new Date(to)) {
       throw new ApiError("'from' date must be before 'to' date", 400);
